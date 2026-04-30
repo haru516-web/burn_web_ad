@@ -122,13 +122,30 @@ function renderCalendarDynamic(couple = {}, selectedDate = '') {
 function renderNextDate(couple = {}) {
   const nextEntry = (couple.calendarEntries || []).find((entry) => entry.id === couple.nextDateId)
     || (couple.calendarEntries || [])[0];
+  if (!nextEntry) {
+    return `
+    <section class="couple-next-date-row" aria-label="次のデートと予定追加">
+      <article class="couple-next-date couple-card">
+        <div class="couple-next-date__body">
+          <p class="couple-kicker">次のデート</p>
+          <h2>予定はまだありません</h2>
+          <p>デートを追加すると、ここに日時と内容が表示されます。</p>
+        </div>
+      </article>
+      <button class="couple-add-date-card couple-card" type="button" data-open-date-add>
+        デートを追加
+        ${getIcon('chevronRight')}
+      </button>
+    </section>
+  `;
+  }
   const date = nextEntry?.date ? new Date(`${nextEntry.date}T00:00:00`) : null;
   const dateLabel = date && !Number.isNaN(date.getTime())
     ? `${date.getMonth() + 1}/${date.getDate()} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}`
-    : '5/3 Sat';
-  const title = nextEntry?.title || '代官山カフェ';
-  const time = nextEntry?.time || '11:00〜13:30';
-  const note = nextEntry?.note || 'お気に入りのカフェで、ゆっくりおしゃべり。';
+    : '';
+  const title = nextEntry.title || 'ふたりの予定';
+  const time = nextEntry.time || '時間未設定';
+  const note = nextEntry.note || 'この日の予定をふたりで整えます。';
   return `
     <section class="couple-next-date-row" aria-label="次のデートと予定追加">
       <article class="couple-next-date couple-card">

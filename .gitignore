@@ -9,11 +9,18 @@ docs/references/pretext-magazine-editor/node_modules/
 docs/references/pretext-magazine-editor/package-lock.json
 
 docs/assets/*
-!docs/assets/main-FuV6PEpt.js
-!docs/assets/main-3pjx7X8h.css
+!docs/assets/main-CkX_C5dT.js
+!docs/assets/main-DKvN9Wjq.js
+!docs/assets/main-CvPLWmoK.js
+!docs/assets/main-B7Y95XLN.css
+!docs/assets/main-CeD8lNad.css
 !docs/assets/local-fonts-DMBg5KN0.js
 !docs/assets/local-fonts-9nDOI10w.css
-!docs/assets/app-DV7MGlIu.js
+!docs/assets/app-CMaHncRW.js
+!docs/assets/app-BqT_H8IN.js
+!docs/assets/app-CSv9UoOy.js
+!docs/assets/pretextComposeBridge-CFpT1Tzr.js
+!docs/assets/pretextComposeBridge-DbeqH5hp.js
 !docs/assets/pretext-DfdzSC1m.js
 !docs/assets/pretext-dQPf2r6i.css
 !docs/assets/10-CNvd6Y-G.png

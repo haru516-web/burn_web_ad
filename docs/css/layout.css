@@ -71,7 +71,11 @@
 .screen-area--home {
   padding: 0;
   background: transparent;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   min-height: 100vh;
   min-height: 100dvh;
   height: 100vh;

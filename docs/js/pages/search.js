@@ -433,9 +433,9 @@ function renderDateDetail(state, uiState) {
   `;
 }
 
-function renderDateListEntry(entry) {
+function renderDateListEntry(entry, isPast = false) {
   return `
-    <article class="couple-date-list-card couple-card">
+    <article class="couple-date-list-card couple-card ${isPast ? 'is-past' : ''}">
       <div>
         <p class="couple-kicker">${formatDateLabel(entry.date)}</p>
         <h2>${entry.title || 'ふたりのデート'}</h2>
@@ -446,7 +446,7 @@ function renderDateListEntry(entry) {
         <p>${entry.note || 'この日の予定をふたりで整えます。'}</p>
       </div>
       <div class="couple-list-actions">
-        <button type="button" data-calendar-date="${entry.date}">カレンダーで見る ${getIcon('chevronRight')}</button>
+        <button type="button" data-home-calendar-target="${entry.date}">カレンダーで見る ${getIcon('chevronRight')}</button>
         <button class="is-danger" type="button" data-delete-date-entry="${entry.id}">削除</button>
       </div>
     </article>
@@ -484,7 +484,7 @@ function renderDateList(state, uiState = {}) {
     </div>
     <section class="couple-date-list-page">
       ${entries.length
-        ? entries.map(renderDateListEntry).join('')
+        ? entries.map((entry) => renderDateListEntry(entry, activeTab === 'past')).join('')
         : `
           <section class="couple-card couple-date-detail">
             <p class="couple-kicker">予定一覧</p>

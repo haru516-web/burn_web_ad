@@ -1849,6 +1849,15 @@ function bindSearchEvents() {
     });
   });
 
+  document.querySelectorAll('[data-home-calendar-target]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.selectedCalendarDate = button.dataset.homeCalendarTarget || getTodayDateKey();
+      uiState.coupleView = 'calendar';
+      uiState.screen = 'home';
+      render();
+    });
+  });
+
   document.querySelectorAll('[data-calendar-month]').forEach((button) => {
     button.addEventListener('click', () => {
       const delta = Number(button.dataset.calendarMonth) || 0;

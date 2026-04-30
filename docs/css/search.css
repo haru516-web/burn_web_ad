@@ -328,6 +328,44 @@
   display: grid;
   gap: 14px;
   padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.couple-date-list-card.is-past {
+  background: linear-gradient(180deg, rgba(250, 248, 245, 0.94), rgba(239, 235, 231, 0.94));
+  border-color: rgba(142, 126, 120, 0.24);
+  box-shadow: 0 12px 26px rgba(88, 78, 72, 0.08);
+  filter: saturate(0.64);
+}
+
+.couple-date-list-card.is-past::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(102, 96, 92, 0.12);
+  mix-blend-mode: multiply;
+}
+
+.couple-date-list-card.is-past > * {
+  position: relative;
+  z-index: 1;
+}
+
+.couple-date-list-card.is-past h2,
+.couple-date-list-card.is-past dd,
+.couple-date-list-card.is-past p:not(.couple-kicker) {
+  color: #6f6761;
+}
+
+.couple-date-list-card.is-past .couple-kicker,
+.couple-date-list-card.is-past dt {
+  color: #9a9089;
+}
+
+.couple-date-list-card.is-past .couple-list-actions button:not(.is-danger) {
+  background: #aaa19b;
 }
 
 .couple-date-list-card h2,
