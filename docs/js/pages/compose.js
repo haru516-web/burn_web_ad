@@ -609,6 +609,9 @@ function renderFixedTextTray() {
           </div>
         </div>
       </div>
+      <div class="compose-text-tray__chrome compose-text-tray__chrome--lower" data-compose-text-tray-lower-chrome>
+        <button class="compose-text-tray__handle" type="button" data-compose-text-tray-close aria-label="Toggle text settings height"></button>
+      </div>
     </section>
   `;
 }

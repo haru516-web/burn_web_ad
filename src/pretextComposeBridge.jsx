@@ -11,12 +11,24 @@ html,
 body,
 #root {
   background: ${EMBEDDED_PRETEXT_STAGE_BACKGROUND} !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
 }
 
 html,
 body {
   margin: 0 !important;
   min-height: 100% !important;
+}
+
+body,
+#root,
+.app-shell,
+.app-shell--embedded {
+  position: fixed !important;
+  inset: 0 !important;
 }
 
 body::before,
@@ -38,7 +50,9 @@ body::after {
 
 .app-shell--embedded,
 .canvas-area--embedded {
+  min-height: 100svh !important;
   min-height: 100dvh !important;
+  height: 100svh !important;
   height: 100dvh !important;
 }
 

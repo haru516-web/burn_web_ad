@@ -10,6 +10,7 @@ import '../docs/css/opening.css';
 import '../docs/css/invite.css';
 import '../docs/css/timeline.css';
 import '../docs/css/search.css';
+import '../docs/css/record.css';
 import '../docs/css/compose.css';
 import '../docs/css/magazine.css';
 import '../docs/css/profile.css';

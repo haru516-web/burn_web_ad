@@ -6,4 +6,5 @@
   border: 0;
   background: #ffffff !important;
   color-scheme: light;
+  overscroll-behavior: none;
 }

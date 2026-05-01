@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, addPost, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, addPost, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -10,6 +10,7 @@ import { renderCompose } from './pages/compose.js';
 import { renderMagazine } from './pages/magazine.js';
 import { renderProfile } from './pages/profile.js';
 import { renderPostDetail } from './pages/postDetail.js';
+import { renderRecord } from './pages/record.js';
 import { DEFAULT_COMPOSE_TEMPLATE, getComposeTemplateById } from './templates/index.js';
 import {
   FIXED_TEMPLATE_SLOT_KEYS,
@@ -73,9 +74,58 @@ const uiState = {
   postReturnProfileAuthor: null,
   profileReturnState: null,
   composeReturnState: null,
+  recordStage: 'home',
+  recordDraft: null,
+  recordSelectedIds: [],
   postDetailShouldScroll: false,
 };
 let composeSelectionChangeCleanup = null;
+let viewportStabilityInstalled = false;
+
+function resetWindowScroll() {
+  if (typeof window === 'undefined') return;
+  if (window.scrollX === 0 && window.scrollY === 0) return;
+  window.scrollTo(0, 0);
+}
+
+function queueWindowScrollReset() {
+  resetWindowScroll();
+  window.requestAnimationFrame?.(resetWindowScroll);
+}
+
+function updateViewportHeightVariable() {
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  document.documentElement.style.setProperty('--app-viewport-height', `${Math.round(viewportHeight)}px`);
+}
+
+function installViewportStabilityGuards() {
+  if (viewportStabilityInstalled || typeof window === 'undefined') return;
+  viewportStabilityInstalled = true;
+
+  const handleViewportChange = () => {
+    updateViewportHeightVariable();
+    queueWindowScrollReset();
+  };
+
+  updateViewportHeightVariable();
+  window.addEventListener('resize', handleViewportChange, { passive: true });
+  window.addEventListener('orientationchange', handleViewportChange, { passive: true });
+  window.addEventListener('scroll', queueWindowScrollReset, { passive: true });
+  document.addEventListener('focusout', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.matches('input, textarea, [contenteditable="true"]')) return;
+    queueWindowScrollReset();
+  }, true);
+  document.addEventListener('touchmove', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest('input[type="range"], textarea, select, .screen-area--record')) return;
+    event.preventDefault();
+  }, { passive: false });
+
+  window.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
+  window.visualViewport?.addEventListener('scroll', queueWindowScrollReset, { passive: true });
+}
 
 function getTodayDateKey() {
   const date = new Date();
@@ -410,6 +460,8 @@ function getPageHtml() {
       });
     case 'magazine':
       return renderMagazine(state);
+    case 'record':
+      return renderRecord(state, uiState);
     case 'profile':
       return renderProfile(state, uiState);
     case 'post': {
@@ -441,7 +493,7 @@ function renderShell() {
   const shellClasses = ['app-shell'];
   const screenAreaClasses = ['screen-area'];
   const themeName = resolveHomeTheme();
-  const hasBottomNav = ['home', 'timeline', 'search', 'profile'].includes(uiState.screen);
+  const hasBottomNav = ['home', 'timeline', 'search', 'record', 'profile'].includes(uiState.screen);
 
   shellClasses.push(`app-shell--theme-${themeName}`);
   shellClasses.push('app-shell--theme-mode-light');
@@ -461,6 +513,8 @@ function renderShell() {
     screenAreaClasses.push('screen-area--compose');
   } else if (uiState.screen === 'search') {
     screenAreaClasses.push('screen-area--search');
+  } else if (uiState.screen === 'record') {
+    screenAreaClasses.push('screen-area--record');
   } else if (uiState.screen === 'profile') {
     screenAreaClasses.push('screen-area--profile');
   } else if (uiState.screen === 'post') {
@@ -472,7 +526,7 @@ function renderShell() {
   app.innerHTML = `
     <div class="${shellClasses.join(' ')}">
       <main class="${screenAreaClasses.join(' ')}" id="screenArea"></main>
-      ${renderBottomNav(uiState.screen, uiState)}
+      ${hasBottomNav ? renderBottomNav(uiState.screen) : ''}
       <div id="modalRoot"></div>
     </div>
   `;
@@ -561,6 +615,11 @@ function navigate(screen) {
     uiState.composePreparedImageDirty = true;
     uiState.composeReturnState = null;
   }
+  if (screen !== 'record') {
+    uiState.recordStage = 'home';
+    uiState.recordDraft = null;
+    uiState.recordSelectedIds = [];
+  }
   uiState.screen = screen;
   uiState.previewPostId = null;
   uiState.commentPostId = null;
@@ -575,6 +634,11 @@ function navigate(screen) {
       templateId: DEFAULT_COMPOSE_TEMPLATE,
       backgroundColor: '#ffffff',
     });
+  }
+  if (screen === 'record') {
+    uiState.recordStage = 'home';
+    uiState.recordDraft = null;
+    uiState.recordSelectedIds = [];
   }
   if (screen === 'profile') {
     resetProfileAvatarDraft();
@@ -2704,7 +2768,6 @@ function bindComposeEvents() {
   const roughOverlay = composeSheet?.querySelector('[data-compose-rough-overlay]') || null;
   const shapeMasks = Array.from(composeSheet?.querySelectorAll('[data-compose-shape-mask]') || []);
   const textTray = document.querySelector('[data-compose-text-tray]');
-  const textTrayChrome = textTray?.querySelector('[data-compose-text-tray-chrome]') || null;
   const textTrayBody = textTray?.querySelector('[data-compose-text-tray-body]') || null;
   const textTrayTarget = textTray?.querySelector('[data-compose-text-target]') || null;
   const textTraySizeValue = textTray?.querySelector('[data-compose-text-size-value]') || null;
@@ -2713,7 +2776,6 @@ function bindComposeEvents() {
   const textTrayFontButtons = Array.from(textTray?.querySelectorAll('[data-compose-text-font]') || []);
   const textTrayAlignButtons = Array.from(textTray?.querySelectorAll('[data-compose-text-align]') || []);
   const textTrayBackgroundButtons = Array.from(textTray?.querySelectorAll('[data-compose-text-background]') || []);
-  const textTrayLevelButtons = Array.from(textTray?.querySelectorAll('[data-compose-text-tray-level]') || []);
   const textTrayResizeHandles = Array.from(textTray?.querySelectorAll('[data-compose-sheet-resize]') || []);
   const customToolsResizeHandles = Array.from(customTemplateControls?.querySelectorAll('[data-compose-sheet-resize]') || []);
   const composeHistoryButtons = Array.from(document.querySelectorAll('[data-compose-history]'));
@@ -2723,6 +2785,7 @@ function bindComposeEvents() {
   let textTrayJustDragged = false;
   let textTrayHeight = null;
   let textTrayWidth = null;
+  let textTrayOffset = 0;
   let textTrayDockSide = 'right';
   let customToolsResizeState = null;
   let customToolsHeight = null;
@@ -3114,10 +3177,26 @@ function bindComposeEvents() {
     }
   }
 
-  function syncComposeTextTrayLevels() {
-    textTrayLevelButtons.forEach((button) => {
-      button.classList.toggle('is-active', Number(button.dataset.composeTextTrayLevel) === textTrayOpenLevel);
-    });
+  function getMaxComposeTextTrayOffset() {
+    if (!textTray) return 0;
+    const trayRect = textTray.getBoundingClientRect();
+    const visualViewportTop = window.visualViewport?.offsetTop || 0;
+    const topInset = visualViewportTop + 8;
+    return Math.max(0, Math.round(trayRect.top + textTrayOffset - topInset));
+  }
+
+  function applyComposeTextTrayOffset(nextOffset, options = {}) {
+    if (!textTray) return;
+    const { animate = true } = options;
+    textTrayOffset = Math.max(0, Math.min(getMaxComposeTextTrayOffset(), Math.round(nextOffset)));
+    textTray.style.transition = animate ? '' : 'none';
+    textTray.style.setProperty('--compose-text-tray-offset', `${textTrayOffset}px`);
+    textTray.classList.toggle('is-raised', textTrayOffset > 8);
+    if (!animate) {
+      requestAnimationFrame(() => {
+        textTray?.style.removeProperty('transition');
+      });
+    }
   }
 
   function applyComposeTextTrayLevel(nextLevel, options = {}) {
@@ -3130,14 +3209,6 @@ function bindComposeEvents() {
     textTray.style.transition = animate ? '' : 'none';
     textTray.style.height = `${textTrayHeight}px`;
     textTray.dataset.openLevel = String(textTrayOpenLevel);
-    syncComposeTextTrayLevels();
-  }
-
-  function snapComposeTextTrayLevel(level) {
-    const snapPoints = [0, 50, 100];
-    return snapPoints.reduce((closest, candidate) => (
-      Math.abs(candidate - level) < Math.abs(closest - level) ? candidate : closest
-    ));
   }
 
   function openComposeTextTray(fieldKey, options = {}) {
@@ -3160,11 +3231,13 @@ function bindComposeEvents() {
     textTrayOpenLevel = 100;
     textTrayHeight = null;
     textTrayDragState = null;
+    textTrayOffset = 0;
+    textTray.style.removeProperty('--compose-text-tray-offset');
+    textTray.classList.remove('is-raised');
     textTray.hidden = true;
     delete textTray.dataset.activeField;
     delete textTray.dataset.openLevel;
     syncComposeTextTargetState();
-    syncComposeTextTrayLevels();
   }
 
   function minimizeComposeTextTray() {
@@ -3183,7 +3256,42 @@ function bindComposeEvents() {
     textTray.style.transition = animate ? '' : 'none';
     textTray.style.height = `${textTrayHeight}px`;
     textTray.dataset.openLevel = String(Math.round(textTrayOpenLevel));
-    syncComposeTextTrayLevels();
+  }
+
+  function applyComposeTextTrayDrag(deltaY, dragState) {
+    if (!textTray || !dragState) return;
+    const { collapsedHeight, expandedHeight } = getComposeTextTrayHeights();
+    if (!expandedHeight) return;
+    const maxOffset = getMaxComposeTextTrayOffset();
+
+    if (dragState.startOffset >= maxOffset - 2 && deltaY < 0) {
+      applyComposeTextTrayOffset(dragState.startOffset - deltaY, { animate: false });
+      applyComposeTextTrayHeight(dragState.startHeight + deltaY, { animate: false });
+      return;
+    }
+
+    const desiredHeight = dragState.startHeight - deltaY;
+
+    if (dragState.startOffset > 0 && deltaY > 0) {
+      const nextOffset = dragState.startOffset - deltaY;
+      if (nextOffset >= 0) {
+        applyComposeTextTrayLevel(100, { animate: false });
+        applyComposeTextTrayOffset(nextOffset, { animate: false });
+        return;
+      }
+      applyComposeTextTrayOffset(0, { animate: false });
+      applyComposeTextTrayHeight(expandedHeight + nextOffset, { animate: false });
+      return;
+    }
+
+    if (desiredHeight > expandedHeight) {
+      applyComposeTextTrayLevel(100, { animate: false });
+      applyComposeTextTrayOffset(dragState.startOffset + (desiredHeight - expandedHeight), { animate: false });
+      return;
+    }
+
+    applyComposeTextTrayOffset(dragState.startOffset, { animate: false });
+    applyComposeTextTrayHeight(Math.max(collapsedHeight, desiredHeight), { animate: false });
   }
 
   function applyComposeTextTraySize(nextSize, options = {}) {
@@ -5912,27 +6020,6 @@ function bindComposeEvents() {
     textTray.hidden = false;
     applyComposeTextTrayLevel(0, { animate: false });
 
-    textTray.querySelector('[data-compose-text-tray-close]')?.addEventListener('click', () => {
-      if (textTrayJustDragged) {
-        textTrayJustDragged = false;
-        return;
-      }
-      applyComposeTextTrayLevel(textTrayOpenLevel === 0 ? 100 : 0);
-      if (textTrayOpenLevel > 0) {
-        restoreActiveComposeTextFocus();
-      }
-    });
-
-    textTrayLevelButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const nextLevel = Number(button.dataset.composeTextTrayLevel || 100);
-        applyComposeTextTrayLevel(nextLevel);
-        if (nextLevel > 0) {
-          restoreActiveComposeTextFocus();
-        }
-      });
-    });
-
     textTrayFontButtons.forEach((button) => {
       button.addEventListener('pointerdown', (event) => {
         rememberActiveTextSelection();
@@ -5993,45 +6080,52 @@ function bindComposeEvents() {
       });
     });
 
-    textTrayChrome?.addEventListener('pointerdown', (event) => {
-      if (event.target.closest('[data-compose-text-tray-level]')) return;
+    const textTrayChromes = Array.from(textTray.querySelectorAll('[data-compose-text-tray-chrome], [data-compose-text-tray-lower-chrome]'));
+    const startTextTrayDrag = (event) => {
       if (event.target.closest('[data-compose-sheet-resize]')) return;
       textTrayDragState = {
         pointerId: event.pointerId,
+        handlePosition: event.currentTarget.matches('[data-compose-text-tray-lower-chrome]') ? 'lower' : 'upper',
         startY: event.clientY,
         startHeight: textTray.getBoundingClientRect().height,
-        startLevel: textTrayOpenLevel,
+        startOffset: textTrayOffset,
         moved: false,
       };
       textTrayJustDragged = false;
       textTray.style.transition = 'none';
-      textTrayChrome.setPointerCapture?.(event.pointerId);
-    });
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    };
 
-    textTrayChrome?.addEventListener('pointermove', (event) => {
+    const moveTextTrayDrag = (event) => {
       if (!textTrayDragState || textTrayDragState.pointerId !== event.pointerId) return;
-      const { bodyHeight } = getComposeTextTrayHeights();
-      if (!bodyHeight) return;
       const deltaY = event.clientY - textTrayDragState.startY;
       if (!textTrayDragState.moved && Math.abs(deltaY) >= 4) {
         textTrayDragState.moved = true;
       }
       if (!textTrayDragState.moved) return;
-      applyComposeTextTrayHeight(textTrayDragState.startHeight - deltaY, { animate: false });
-    });
+      applyComposeTextTrayDrag(deltaY, textTrayDragState);
+    };
 
     const finishTextTrayDrag = (event) => {
       if (!textTrayDragState || textTrayDragState.pointerId !== event.pointerId) return;
       textTrayJustDragged = textTrayDragState.moved;
       textTrayDragState = null;
-      textTrayChrome?.releasePointerCapture?.(event.pointerId);
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
       if (textTrayHeight) {
         applyComposeTextTrayHeight(textTrayHeight);
       }
+      applyComposeTextTrayOffset(textTrayOffset);
+      if (textTrayOpenLevel > 0) {
+        restoreActiveComposeTextFocus();
+      }
     };
 
-    textTrayChrome?.addEventListener('pointerup', finishTextTrayDrag);
-    textTrayChrome?.addEventListener('pointercancel', finishTextTrayDrag);
+    textTrayChromes.forEach((chrome) => {
+      chrome.addEventListener('pointerdown', startTextTrayDrag);
+      chrome.addEventListener('pointermove', moveTextTrayDrag);
+      chrome.addEventListener('pointerup', finishTextTrayDrag);
+      chrome.addEventListener('pointercancel', finishTextTrayDrag);
+    });
 
     textTrayResizeHandles.forEach((handle) => {
       handle.addEventListener('pointerdown', (event) => {
@@ -6716,6 +6810,99 @@ function bindMagazineEvents() {
   });
 }
 
+async function applyRecordPhotoFile(file) {
+  if (!file) return;
+  const imageData = await fileToWebpDataUrl(file, { maxWidth: 1600, quality: 0.88 });
+  const now = new Date();
+  uiState.recordDraft = {
+    ...(uiState.recordDraft || {}),
+    imageData,
+    time: now.toTimeString().slice(0, 5),
+    place: uiState.recordDraft?.place || '',
+    memo: uiState.recordDraft?.memo || '',
+  };
+  renderScreen();
+}
+
+function bindRecordEvents() {
+  document.querySelectorAll('[data-record-stage]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordStage = button.dataset.recordStage || 'home';
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-record-back-home]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordStage = 'home';
+      uiState.recordDraft = null;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-record-open-camera]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordStage = 'camera';
+      uiState.recordDraft = {
+        imageData: '',
+        time: new Date().toTimeString().slice(0, 5),
+        place: '',
+        memo: '',
+      };
+      renderScreen();
+    });
+  });
+
+  document.querySelector('[data-record-open-camera-input]')?.addEventListener('click', () => {
+    document.querySelector('[data-record-camera-input]')?.click();
+  });
+
+  document.querySelector('[data-record-open-album]')?.addEventListener('click', () => {
+    document.querySelector('[data-record-album-input]')?.click();
+  });
+
+  document.querySelectorAll('[data-record-camera-input], [data-record-album-input]').forEach((input) => {
+    input.addEventListener('change', async (event) => {
+      await applyRecordPhotoFile(event.target.files?.[0]);
+      event.target.value = '';
+    });
+  });
+
+  document.querySelector('[data-record-save]')?.addEventListener('click', () => {
+    const draft = uiState.recordDraft || {};
+    if (!draft.imageData) return;
+    const saved = addRecordMemory({
+      ...draft,
+      place: document.querySelector('[data-record-place]')?.value || draft.place || '',
+      memo: document.querySelector('[data-record-memo]')?.value || draft.memo || '',
+    });
+    uiState.recordDraft = null;
+    uiState.recordStage = 'select';
+    uiState.recordSelectedIds = [saved.id];
+    renderScreen();
+  });
+
+  document.querySelectorAll('[data-record-toggle-memory]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.dataset.recordToggleMemory;
+      const selected = new Set(uiState.recordSelectedIds || []);
+      if (selected.has(id)) {
+        selected.delete(id);
+      } else if (selected.size < 3) {
+        selected.add(id);
+      }
+      uiState.recordSelectedIds = Array.from(selected);
+      renderScreen();
+    });
+  });
+
+  document.querySelector('[data-record-create-page]')?.addEventListener('click', () => {
+    if ((uiState.recordSelectedIds || []).length !== 3) return;
+    uiState.recordStage = 'complete';
+    renderScreen();
+  });
+}
+
 function bindProfileEvents() {
   bindPostInteractions(document.getElementById('screenArea'));
   bindScreenScrollSurfaces();
@@ -7078,6 +7265,9 @@ function bindPageEvents() {
     case 'magazine':
       bindMagazineEvents();
       break;
+    case 'record':
+      bindRecordEvents();
+      break;
     case 'profile':
       bindProfileEvents();
       break;
@@ -7093,6 +7283,7 @@ export function bootLegacyApp(root = document.getElementById('app')) {
   if (!root) {
     throw new Error('bootLegacyApp requires an app root element.');
   }
+  installViewportStabilityGuards();
   app = root;
   render();
   return { render };

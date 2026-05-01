@@ -5,6 +5,7 @@ import type { TextBox } from '../types'
 const SCALE_MIN = 80
 const SCALE_MAX = 140
 const SCALE_STEP = 1
+const FLOATING_TRAY_GAP = 16
 const FONT_GROUPS = [
   {
     label: 'Sans',
@@ -47,8 +48,14 @@ export function EmbeddedTextTray({
 }: EmbeddedTextTrayProps) {
   const trayRef = useRef<HTMLElement | null>(null)
   const bodyRef = useRef<HTMLDivElement | null>(null)
-  const dragStateRef = useRef<{ pointerId: number, startY: number, startLevel: number, moved: boolean } | null>(null)
-  const justDraggedRef = useRef(false)
+  const dragStateRef = useRef<{
+    pointerId: number
+    handlePosition: 'upper' | 'lower'
+    startY: number
+    startHeight: number
+    startOffset: number
+    moved: boolean
+  } | null>(null)
   const baseMetricsRef = useRef({
     id: selected.id,
     kind: selected.kind,
@@ -58,6 +65,7 @@ export function EmbeddedTextTray({
   const shouldAnimateRef = useRef(false)
 
   const [openLevel, setOpenLevel] = useState(0)
+  const [trayOffset, setTrayOffset] = useState(0)
   const [scalePercent, setScalePercent] = useState(100)
 
   useEffect(() => {
@@ -91,12 +99,62 @@ export function EmbeddedTextTray({
     setOpenLevel(clamp(nextLevel, 0, 100))
   }
 
-  const snapOpenLevel = (level: number) => {
-    const snapPoints = [0, 50, 100]
-    return snapPoints.reduce((closest, candidate) => (
-      Math.abs(candidate - level) < Math.abs(closest - level) ? candidate : closest
-    ))
+  const getMaxTrayOffset = () => {
+    const tray = trayRef.current
+    if (!tray) return 0
+    const trayRect = tray.getBoundingClientRect()
+    const visualViewportTop = window.visualViewport?.offsetTop || 0
+    const topInset = visualViewportTop + 8
+    return Math.max(0, Math.round(trayRect.top + trayOffset - topInset))
   }
+
+  const applyTrayOffset = (nextOffset: number) => {
+    setTrayOffset(clamp(nextOffset, 0, getMaxTrayOffset()))
+  }
+
+  const applyTrayDrag = (deltaY: number, dragState: NonNullable<typeof dragStateRef.current>) => {
+    const { collapsedHeight, bodyHeight } = getHeights()
+    const expandedHeight = collapsedHeight + bodyHeight
+    if (!expandedHeight) return
+    const maxOffset = getMaxTrayOffset()
+
+    if (dragState.startOffset >= maxOffset - 2 && deltaY < 0) {
+      applyTrayOffset(dragState.startOffset - deltaY)
+      applyOpenLevel(((dragState.startHeight + deltaY - collapsedHeight) / bodyHeight) * 100, false)
+      return
+    }
+
+    const desiredHeight = dragState.startHeight - deltaY
+
+    if (dragState.startOffset > 0 && deltaY > 0) {
+      const nextOffset = dragState.startOffset - deltaY
+      if (nextOffset >= 0) {
+        applyOpenLevel(100, false)
+        applyTrayOffset(nextOffset)
+        return
+      }
+      applyTrayOffset(0)
+      applyOpenLevel(((expandedHeight + nextOffset - collapsedHeight) / bodyHeight) * 100, false)
+      return
+    }
+
+    if (desiredHeight > expandedHeight) {
+      applyOpenLevel(100, false)
+      applyTrayOffset(dragState.startOffset + (desiredHeight - expandedHeight))
+      return
+    }
+
+    applyTrayOffset(dragState.startOffset)
+    applyOpenLevel(((Math.max(collapsedHeight, desiredHeight) - collapsedHeight) / bodyHeight) * 100, false)
+  }
+
+  const renderTrayControls = () => (
+    <button
+      className="compose-text-tray__handle"
+      type="button"
+      aria-label="Toggle text settings height"
+    />
+  )
 
   useLayoutEffect(() => {
     const tray = trayRef.current
@@ -106,15 +164,15 @@ export function EmbeddedTextTray({
     const targetHeight = collapsedHeight + (bodyHeight * (openLevel / 100))
     tray.style.transition = shouldAnimateRef.current ? '' : 'none'
     tray.style.height = `${Math.round(targetHeight)}px`
-    tray.style.transform = 'translateY(0)'
-    onVisibleInsetChange?.(Math.round(targetHeight))
+    tray.style.setProperty('--floating-tray-offset', `${Math.round(trayOffset)}px`)
+    onVisibleInsetChange?.(Math.round(targetHeight + FLOATING_TRAY_GAP + trayOffset))
 
     if (!shouldAnimateRef.current) {
       requestAnimationFrame(() => {
         tray.style.removeProperty('transition')
       })
     }
-  }, [openLevel, onVisibleInsetChange, selected.id, selected.kind])
+  }, [openLevel, onVisibleInsetChange, selected.id, selected.kind, trayOffset])
 
   useEffect(() => () => {
     onVisibleInsetChange?.(0)
@@ -132,16 +190,14 @@ export function EmbeddedTextTray({
   }
 
   const handleChromePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement | null
-    if (target?.closest('[data-pretext-tray-level]')) return
-
     dragStateRef.current = {
       pointerId: event.pointerId,
+      handlePosition: event.currentTarget.classList.contains('compose-text-tray__chrome--lower') ? 'lower' : 'upper',
       startY: event.clientY,
-      startLevel: openLevel,
+      startHeight: trayRef.current?.getBoundingClientRect().height || 0,
+      startOffset: trayOffset,
       moved: false,
     }
-    justDraggedRef.current = false
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
 
@@ -149,30 +205,25 @@ export function EmbeddedTextTray({
     const dragState = dragStateRef.current
     if (!dragState || dragState.pointerId !== event.pointerId) return
 
-    const { bodyHeight } = getHeights()
-    if (!bodyHeight) return
-
     const deltaY = event.clientY - dragState.startY
     if (!dragState.moved && Math.abs(deltaY) >= 4) {
       dragState.moved = true
     }
-    applyOpenLevel(dragState.startLevel - ((deltaY / bodyHeight) * 100), false)
+    applyTrayDrag(deltaY, dragState)
   }
 
   const finishChromeDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     const dragState = dragStateRef.current
     if (!dragState || dragState.pointerId !== event.pointerId) return
 
-    justDraggedRef.current = dragState.moved
     dragStateRef.current = null
     event.currentTarget.releasePointerCapture?.(event.pointerId)
-    applyOpenLevel(snapOpenLevel(openLevel))
   }
 
   return (
     <section
       ref={trayRef}
-      className="compose-text-tray compose-text-tray--embedded"
+      className={`compose-text-tray compose-text-tray--embedded ${trayOffset > 8 ? 'is-raised' : ''}`}
       data-open-level={openLevel}
     >
       <div
@@ -182,31 +233,7 @@ export function EmbeddedTextTray({
         onPointerUp={finishChromeDrag}
         onPointerCancel={finishChromeDrag}
       >
-        <button
-          className="compose-text-tray__handle"
-          type="button"
-          aria-label="Toggle text settings height"
-          onClick={() => {
-            if (justDraggedRef.current) {
-              justDraggedRef.current = false
-              return
-            }
-            applyOpenLevel(openLevel === 0 ? 100 : 0)
-          }}
-        />
-        <div className="compose-text-tray__levels" role="group" aria-label="Text settings height">
-          {[0, 50, 100].map((level) => (
-            <button
-              key={level}
-              className={`compose-text-tray__level ${openLevel === level ? 'is-active' : ''}`}
-              type="button"
-              data-pretext-tray-level={level}
-              onClick={() => applyOpenLevel(level)}
-            >
-              {level}%
-            </button>
-          ))}
-        </div>
+        {renderTrayControls()}
       </div>
 
       <div ref={bodyRef} className="compose-text-tray__body">
@@ -315,6 +342,16 @@ export function EmbeddedTextTray({
             <span className="compose-text-tray__slider-large">A</span>
           </div>
         </div>
+      </div>
+
+      <div
+        className="compose-text-tray__chrome compose-text-tray__chrome--lower"
+        onPointerDown={handleChromePointerDown}
+        onPointerMove={handleChromePointerMove}
+        onPointerUp={finishChromeDrag}
+        onPointerCancel={finishChromeDrag}
+      >
+        {renderTrayControls()}
       </div>
     </section>
   )

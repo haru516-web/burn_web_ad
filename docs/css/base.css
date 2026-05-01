@@ -1,16 +1,26 @@
 html {
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   scrollbar-gutter: stable;
   background: #ffffff;
 }
 
 body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   font-family: 'Noto Sans JP', sans-serif;
   color: var(--text);
   background: #ffffff;
   min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 a {

@@ -821,7 +821,7 @@
   position: absolute;
   left: auto;
   right: 0;
-  bottom: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   width: 100%;
   z-index: 240;
 }
@@ -1553,7 +1553,7 @@
   width: 100%;
   padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
   border: 0;
-  border-radius: 28px 28px 0 0;
+  border-radius: 28px;
   background:
     linear-gradient(180deg, rgba(255, 251, 247, 0.96), rgba(248, 240, 232, 0.98));
   box-shadow:
@@ -3368,7 +3368,7 @@
   position: absolute;
   left: auto;
   right: 0;
-  bottom: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   z-index: 240;
   width: 100%;
   min-width: min(240px, 100%);
@@ -3377,12 +3377,13 @@
   gap: 16px;
   padding: 14px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
   border: 1px solid rgba(129, 105, 88, 0.14);
-  border-radius: 28px 28px 0 0;
+  border-radius: 28px;
   background: rgba(255, 252, 248, 0.62);
   box-shadow: 0 -14px 30px rgba(81, 60, 39, 0.12);
   backdrop-filter: blur(18px);
   overflow: hidden;
-  transition: height 180ms ease, width 180ms ease;
+  transform: translateY(calc(-1 * var(--compose-text-tray-offset, 0px)));
+  transition: height 180ms ease, width 180ms ease, transform 180ms ease;
 }
 
 .compose-sheet-resize {
@@ -3456,7 +3457,16 @@
   display: grid;
   justify-items: center;
   gap: 10px;
+  cursor: ns-resize;
   touch-action: none;
+}
+
+.compose-text-tray__chrome--lower {
+  display: none;
+}
+
+.compose-text-tray.is-raised .compose-text-tray__chrome--lower {
+  display: grid;
 }
 
 .compose-text-tray__handle {
@@ -4069,8 +4079,9 @@
   .page--compose--edit .compose-text-tray {
     gap: 12px;
     padding: 12px 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
-    border-radius: 22px 22px 0 0;
+    border-radius: 22px;
   }
+
 }
 
 .page--compose--edit--page8 .page-header--compose {

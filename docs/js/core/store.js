@@ -9,6 +9,7 @@ const defaultState = {
   },
   posts: [],
   drafts: [],
+  recordMemories: [],
   issues: [],
   followingAuthors: [],
   couple: {
@@ -104,6 +105,17 @@ function normalizeDraft(draft) {
   };
 }
 
+function normalizeRecordMemory(memory) {
+  return {
+    id: memory.id || createId('memory'),
+    imageData: memory.imageData || '',
+    time: memory.time || new Date().toTimeString().slice(0, 5),
+    place: memory.place || '',
+    memo: memory.memo || '',
+    createdAt: memory.createdAt || new Date().toISOString(),
+  };
+}
+
 function normalizeState(saved) {
   const savedCouple = saved?.couple && typeof saved.couple === 'object' ? saved.couple : {};
   const savedAnswers = savedCouple.answers && typeof savedCouple.answers === 'object' ? savedCouple.answers : {};
@@ -116,6 +128,9 @@ function normalizeState(saved) {
     },
     posts: Array.isArray(saved.posts) ? saved.posts.map(normalizePost) : [],
     drafts: Array.isArray(saved.drafts) ? saved.drafts.map(normalizeDraft) : [],
+    recordMemories: Array.isArray(saved.recordMemories)
+      ? saved.recordMemories.map(normalizeRecordMemory)
+      : [],
     issues: Array.isArray(saved.issues) ? saved.issues : [],
     followingAuthors: Array.isArray(saved.followingAuthors) ? saved.followingAuthors : [],
     couple: {
@@ -217,6 +232,18 @@ export function deleteDraft(draftId) {
   if (!next.drafts.some((draft) => draft.id === draftId)) return;
   next.drafts = next.drafts.filter((draft) => draft.id !== draftId);
   commit(next);
+}
+
+export function addRecordMemory(memory) {
+  const next = structuredClone(state);
+  const normalized = normalizeRecordMemory({
+    ...memory,
+    id: createId('memory'),
+    createdAt: new Date().toISOString(),
+  });
+  next.recordMemories = [normalized, ...(next.recordMemories || [])];
+  commit(next);
+  return normalized;
 }
 
 export function updatePost(postId, updates) {
