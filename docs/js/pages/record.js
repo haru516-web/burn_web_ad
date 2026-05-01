@@ -31,6 +31,7 @@ function renderMemoryCards(memories) {
             <strong>${getIcon('pin')} ${escapeHtml(memory.place || '場所未設定')}</strong>
             <p>${escapeHtml(memory.memo || 'メモはまだありません。')}</p>
           </div>
+          <button class="record-memory-card__edit" type="button" data-record-edit-memory="${memory.id}" aria-label="この思い出を編集">${getIcon('chevronRight')}</button>
         </article>
       `).join('')}
     </div>
@@ -140,6 +141,32 @@ function renderRecordCamera(draft) {
   `;
 }
 
+function renderRecordEdit(memory) {
+  if (!memory) return renderRecordHome([]);
+  return `
+    <section class="record-page record-page--edit-memory">
+      <header class="record-stack-header">
+        <button type="button" data-record-stage="home" aria-label="戻る">${getIcon('returnLeft')}</button>
+        <h1>思い出を編集</h1>
+      </header>
+
+      <article class="record-edit-card">
+        <img src="${memory.imageData}" alt="" />
+        <div class="record-edit-card__time">${getIcon('clock')} <strong>${escapeHtml(memory.time)}</strong></div>
+        <label class="record-field">
+          <span>場所</span>
+          <div class="record-input-wrap">${getIcon('pin')}<input type="text" data-record-edit-place value="${escapeHtml(memory.place || '')}" placeholder="代官山" /></div>
+        </label>
+        <label class="record-field">
+          <span>メモ</span>
+          <input type="text" data-record-edit-memo value="${escapeHtml(memory.memo || '')}" placeholder="例: カフェの雰囲気が素敵だった" />
+        </label>
+        <button class="record-primary-button" type="button" data-record-update-memory="${memory.id}">保存</button>
+      </article>
+    </section>
+  `;
+}
+
 function renderRecordSelect(memories, selectedIds) {
   const selected = new Set(selectedIds || []);
   return `
@@ -236,6 +263,7 @@ export function renderRecord(state, uiState) {
   const stage = uiState.recordStage || 'home';
 
   if (stage === 'camera') return renderRecordCamera(uiState.recordDraft || {});
+  if (stage === 'edit') return renderRecordEdit(memories.find((memory) => memory.id === uiState.recordEditingId));
   if (stage === 'select') return renderRecordSelect(memories, uiState.recordSelectedIds || []);
   if (stage === 'complete') return renderRecordComplete(getSelectedMemories(memories, uiState.recordSelectedIds || []));
   return renderRecordHome(memories);

@@ -246,6 +246,17 @@ export function addRecordMemory(memory) {
   return normalized;
 }
 
+export function updateRecordMemory(memoryId, updates) {
+  const next = structuredClone(state);
+  const memory = (next.recordMemories || []).find((item) => item.id === memoryId);
+  if (!memory) return null;
+  memory.place = String(updates?.place ?? memory.place ?? '').trim();
+  memory.memo = String(updates?.memo ?? memory.memo ?? '').trim();
+  memory.updatedAt = new Date().toISOString();
+  commit(next);
+  return normalizeRecordMemory(memory);
+}
+
 export function updatePost(postId, updates) {
   const next = structuredClone(state);
   const post = next.posts.find((item) => item.id === postId);

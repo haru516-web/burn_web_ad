@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, addPost, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, addPost, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -77,6 +77,7 @@ const uiState = {
   recordStage: 'home',
   recordDraft: null,
   recordSelectedIds: [],
+  recordEditingId: null,
   postDetailShouldScroll: false,
 };
 let composeSelectionChangeCleanup = null;
@@ -619,6 +620,7 @@ function navigate(screen) {
     uiState.recordStage = 'home';
     uiState.recordDraft = null;
     uiState.recordSelectedIds = [];
+    uiState.recordEditingId = null;
   }
   uiState.screen = screen;
   uiState.previewPostId = null;
@@ -639,6 +641,7 @@ function navigate(screen) {
     uiState.recordStage = 'home';
     uiState.recordDraft = null;
     uiState.recordSelectedIds = [];
+    uiState.recordEditingId = null;
   }
   if (screen === 'profile') {
     resetProfileAvatarDraft();
@@ -6828,6 +6831,9 @@ function bindRecordEvents() {
   document.querySelectorAll('[data-record-stage]').forEach((button) => {
     button.addEventListener('click', () => {
       uiState.recordStage = button.dataset.recordStage || 'home';
+      if (uiState.recordStage !== 'edit') {
+        uiState.recordEditingId = null;
+      }
       renderScreen();
     });
   });
@@ -6836,6 +6842,7 @@ function bindRecordEvents() {
     button.addEventListener('click', () => {
       uiState.recordStage = 'home';
       uiState.recordDraft = null;
+      uiState.recordEditingId = null;
       renderScreen();
     });
   });
@@ -6879,6 +6886,26 @@ function bindRecordEvents() {
     uiState.recordDraft = null;
     uiState.recordStage = 'select';
     uiState.recordSelectedIds = [saved.id];
+    renderScreen();
+  });
+
+  document.querySelectorAll('[data-record-edit-memory]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordEditingId = button.dataset.recordEditMemory || null;
+      uiState.recordStage = 'edit';
+      renderScreen();
+    });
+  });
+
+  document.querySelector('[data-record-update-memory]')?.addEventListener('click', () => {
+    const id = uiState.recordEditingId;
+    if (!id) return;
+    updateRecordMemory(id, {
+      place: document.querySelector('[data-record-edit-place]')?.value || '',
+      memo: document.querySelector('[data-record-edit-memo]')?.value || '',
+    });
+    uiState.recordEditingId = null;
+    uiState.recordStage = 'home';
     renderScreen();
   });
 
