@@ -72,11 +72,11 @@
 
 .record-start-card {
   display: grid;
-  grid-template-columns: 118px 1fr;
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 14px;
   align-items: center;
   margin-top: 22px;
-  padding: 26px;
+  padding: 18px 20px;
   border-radius: 14px;
 }
 
@@ -96,8 +96,8 @@
 }
 
 .record-start-card__copy h1 {
-  margin: 0 0 10px;
-  font-size: 1.55rem;
+  margin: 0 0 12px;
+  font-size: 1.38rem;
   font-weight: 500;
 }
 
@@ -1289,9 +1289,9 @@
   }
 
   .record-start-card {
-    grid-template-columns: 94px 1fr;
-    gap: 18px;
-    padding: 22px 18px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px 18px;
   }
 
   .record-start-card__icon {
@@ -1303,8 +1303,9 @@
     font-size: 1.28rem;
   }
 
-  .record-start-card__copy p {
-    font-size: 0.94rem;
+  .record-start-card .record-primary-button {
+    width: 100%;
+    min-height: 48px;
   }
 
   .record-section {

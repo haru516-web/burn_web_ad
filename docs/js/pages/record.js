@@ -96,10 +96,8 @@ function renderRecordHome(memories, recordDate = '') {
       </header>
 
       <section class="record-start-card">
-        <div class="record-start-card__icon">${getIcon('camera')}</div>
         <div class="record-start-card__copy">
           <h1>今日の記録を残す</h1>
-          <p>写真といっしょに、心に残ったことを記録してみましょう。</p>
           <button class="record-primary-button" type="button" data-record-open-camera>
             ${getIcon('camera')} カメラを起動
           </button>
