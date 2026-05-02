@@ -200,6 +200,14 @@
   font-size: 0.92rem;
 }
 
+.record-selected-date-label {
+  margin: -6px 0 16px;
+  color: #8e7a72;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+}
+
 .record-timeline {
   position: relative;
   display: grid;
@@ -659,11 +667,11 @@
 .record-page--select {
   width: min(100%, 700px);
   padding-inline: 16px;
-  padding-bottom: 150px;
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 42px);
 }
 
 .record-page--select .record-stack-header {
-  padding-top: calc(env(safe-area-inset-top) + 18px);
+  padding-top: calc(env(safe-area-inset-top) + 8px);
 }
 
 .record-page--select .record-stack-header h1 {
@@ -677,7 +685,7 @@
 }
 
 .record-select-date {
-  margin: 46px 0 0;
+  margin: 18px 0 0;
   color: #2c2320;
   font-size: clamp(1.35rem, 5vw, 1.75rem);
   font-weight: 500;
@@ -706,7 +714,7 @@
 }
 
 .record-select-lead {
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   color: #302623;
   font-size: clamp(1.15rem, 4.4vw, 1.5rem);
   line-height: 1.5;
@@ -715,7 +723,7 @@
 .record-select-list {
   display: grid;
   gap: 12px;
-  margin-top: 26px;
+  margin-top: 20px;
   padding-bottom: 24px;
 }
 
@@ -813,19 +821,118 @@
   height: 24px;
 }
 
+.record-template-picker {
+  margin: 18px 0 18px;
+  text-align: left;
+}
+
+.record-title-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+  text-align: left;
+}
+
+.record-title-field span {
+  color: #8e7a72;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.record-title-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(78, 57, 51, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #302623;
+  font: inherit;
+}
+
+.record-template-picker__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.record-template-picker__head h2 {
+  margin: 0;
+  color: #302623;
+  font-family: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: 1.06rem;
+  font-weight: 500;
+}
+
+.record-template-picker__head p {
+  margin: 0;
+  color: #8e7a72;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.record-template-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(96px, 112px);
+  gap: 12px;
+  margin-inline: -16px;
+  padding: 2px 16px 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.record-template-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.record-template-option {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(78, 57, 51, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #6b5e54;
+  text-align: left;
+  scroll-snap-align: start;
+}
+
+.record-template-option.is-selected {
+  border-color: rgba(180, 106, 98, 0.72);
+  box-shadow: 0 0 0 2px rgba(180, 106, 98, 0.14);
+}
+
+.record-template-option img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1.414;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.record-template-option span {
+  font-size: 0.76rem;
+}
+
 .record-create-bar {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 4;
+  position: static;
   display: grid;
   justify-items: center;
   gap: 12px;
-  padding: 16px 18px calc(env(safe-area-inset-bottom) + 18px);
+  margin-top: 18px;
+  padding: 16px 0 0;
   background: rgba(255, 250, 246, 0.9);
   border-top: 1px solid rgba(84, 66, 59, 0.1);
-  backdrop-filter: blur(18px);
 }
 
 .record-create-bar p {
@@ -1015,6 +1122,139 @@
   justify-content: flex-start;
 }
 
+.record-generated-page--template {
+  width: min(76vw, 390px);
+  padding: 0;
+  aspect-ratio: 1414 / 2000;
+  background: #fff;
+}
+
+.record-generated-page__template {
+  position: absolute;
+  inset: 0;
+  display: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.record-template-slot {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.record-template-slot--image {
+  margin: 0;
+  background: #ffe4e4;
+  overflow: visible;
+}
+
+.record-template-slot--image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.record-template-slot--image figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -18px;
+  display: grid;
+  grid-template-columns: minmax(16px, 1fr) auto minmax(16px, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: #302623;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: clamp(0.68rem, 2vw, 0.95rem);
+  line-height: 1;
+  text-align: center;
+}
+
+.record-template-slot--image figcaption span {
+  height: 1px;
+  background: rgba(48, 38, 35, 0.26);
+}
+
+.record-template-slot--text {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 5.5%;
+  overflow: visible;
+  background: transparent;
+  text-align: left;
+}
+
+.record-template-slot--text::before,
+.record-template-slot--title::before {
+  display: none;
+}
+
+.record-template-slot--text strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(48, 38, 35, 0.24);
+  color: #6f4d48;
+  font-family: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: clamp(0.68rem, 2.1vw, 0.92rem);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.record-template-slot--text strong svg {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  color: #b46a62;
+}
+
+.record-template-slot--text p {
+  margin: 0;
+  overflow: visible;
+  color: #4f4440;
+  font-family: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: clamp(0.5rem, 1.45vw, 0.64rem);
+  line-height: 1.65;
+}
+
+.record-template-slot.is-empty {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(138, 87, 81, 0.28);
+  color: #a58d84;
+  font-size: 0.7rem;
+}
+
+.record-template-slot--title {
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 3.5%;
+  border: 0;
+  overflow: hidden;
+  color: #302623;
+  font-family: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: clamp(0.9rem, 3vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  overflow: visible;
+  background: transparent;
+}
+
+.record-template-slot--title:focus {
+  outline: 2px solid rgba(180, 106, 98, 0.7);
+  outline-offset: -2px;
+}
+
 .record-complete-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1160,6 +1400,15 @@
   .record-select-card__check svg {
     width: 20px;
     height: 20px;
+  }
+
+  .record-template-picker__head {
+    display: grid;
+    gap: 4px;
+  }
+
+  .record-template-picker__head p {
+    text-align: left;
   }
 
   .record-create-bar .record-primary-button {

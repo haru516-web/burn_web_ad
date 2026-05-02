@@ -174,21 +174,33 @@ function renderSelectedDatePlan(couple = {}, selectedDate = '') {
 
   if (!entry) {
     return `
-      <section class="couple-selected-date couple-card">
+      <section class="couple-selected-date-row" aria-label="selected date and add date">
+        <article class="couple-selected-date couple-card">
         <p class="couple-kicker">選択した日</p>
         <h2>${dateLabel}</h2>
         <p>この日の予定はまだありません。</p>
+        </article>
+        <button class="couple-add-date-card couple-add-date-card--memory couple-card" type="button" data-open-selected-date-memories data-selected-date-memories-date="${dateKey}">
+          選択した日の思い出を見る
+          ${getIcon('chevronRight')}
+        </button>
       </section>
     `;
   }
 
   return `
-    <section class="couple-selected-date couple-card">
+    <section class="couple-selected-date-row" aria-label="selected date and add date">
+      <article class="couple-selected-date couple-card">
       <p class="couple-kicker">選択した日</p>
       <h2>${dateLabel}　${entry.title}</h2>
       <p>${entry.time || '時間未設定'}</p>
       <p>${entry.place || '場所未設定'}</p>
       <p>${entry.note || 'この日の予定をふたりで整えます。'}</p>
+      </article>
+      <button class="couple-add-date-card couple-add-date-card--memory couple-card" type="button" data-open-selected-date-memories data-selected-date-memories-date="${dateKey}">
+        選択した日の思い出を見る
+        ${getIcon('chevronRight')}
+      </button>
     </section>
   `;
 }

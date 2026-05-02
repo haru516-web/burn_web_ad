@@ -12,6 +12,7 @@ import { renderProfile } from './pages/profile.js';
 import { renderPostDetail } from './pages/postDetail.js';
 import { renderRecord } from './pages/record.js';
 import { DEFAULT_COMPOSE_TEMPLATE, getComposeTemplateById } from './templates/index.js';
+import { DEFAULT_RECORD_TEMPLATE } from './templates/recordTemplates.js';
 import {
   FIXED_TEMPLATE_SLOT_KEYS,
   getFixedTemplateLayout,
@@ -75,6 +76,9 @@ const uiState = {
   profileReturnState: null,
   composeReturnState: null,
   recordStage: 'home',
+  recordDate: null,
+  recordTemplateId: DEFAULT_RECORD_TEMPLATE,
+  recordTitle: '',
   recordDraft: null,
   recordSelectedIds: [],
   recordEditingId: null,
@@ -628,6 +632,9 @@ function navigate(screen) {
   }
   if (screen !== 'record') {
     uiState.recordStage = 'home';
+    uiState.recordDate = null;
+    uiState.recordTemplateId = DEFAULT_RECORD_TEMPLATE;
+    uiState.recordTitle = '';
     uiState.recordDraft = null;
     uiState.recordSelectedIds = [];
     uiState.recordEditingId = null;
@@ -649,6 +656,9 @@ function navigate(screen) {
   }
   if (screen === 'record') {
     uiState.recordStage = 'home';
+    uiState.recordDate = null;
+    uiState.recordTemplateId = DEFAULT_RECORD_TEMPLATE;
+    uiState.recordTitle = '';
     uiState.recordDraft = null;
     uiState.recordSelectedIds = [];
     uiState.recordEditingId = null;
@@ -1773,6 +1783,18 @@ function bindTimelineEvents() {
     });
   });
 
+  document.querySelectorAll('[data-open-selected-date-memories]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordDate = button.dataset.selectedDateMemoriesDate || uiState.selectedCalendarDate || getTodayDateKey();
+      uiState.recordStage = 'home';
+      uiState.recordDraft = null;
+      uiState.recordEditingId = null;
+      uiState.recordSelectedIds = [];
+      uiState.screen = 'record';
+      render();
+    });
+  });
+
   document.querySelectorAll('[data-home-calendar-month]').forEach((button) => {
     button.addEventListener('click', () => {
       const delta = Number(button.dataset.homeCalendarMonth) || 0;
@@ -2518,16 +2540,21 @@ async function renderComposeTemplate(values, files, extra = {}) {
   return canvas.toDataURL('image/png');
 }
 
-function composeDataUrlToBlobUrl(dataUrl) {
+function composeDataUrlToBlob(dataUrl) {
   const [meta, data] = String(dataUrl || '').split(',');
-  if (!meta || !data) return '';
+  if (!meta || !data) return null;
   const mime = meta.match(/^data:([^;]+);base64$/)?.[1] || 'image/png';
   const binary = window.atob(data);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) {
     bytes[index] = binary.charCodeAt(index);
   }
-  return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  return new Blob([bytes], { type: mime });
+}
+
+function composeDataUrlToBlobUrl(dataUrl) {
+  const blob = composeDataUrlToBlob(dataUrl);
+  return blob ? URL.createObjectURL(blob) : '';
 }
 
 async function resourceUrlToDataUrl(url) {
@@ -2649,6 +2676,14 @@ async function prepareComposeCaptureClone(sourceFrame) {
   const clone = sourceFrame.cloneNode(true);
   inlineComputedStyles(sourceFrame, clone);
   removeComposeCaptureChrome(clone);
+  clone.querySelectorAll('.record-template-slot--title').forEach((element) => {
+    if (!(element instanceof HTMLInputElement)) return;
+    const titleText = document.createElement('div');
+    titleText.className = element.className;
+    titleText.textContent = element.value || element.getAttribute('value') || '';
+    titleText.setAttribute('style', element.getAttribute('style') || '');
+    element.replaceWith(titleText);
+  });
   clone.querySelectorAll([
     'input',
     'button',
@@ -6848,13 +6883,70 @@ async function captureRecordPageImage() {
   }
 }
 
+function getRecordPageImageFilename() {
+  const dateKey = uiState.recordDate || new Date().toISOString().slice(0, 10);
+  return `memory-page-${dateKey.replaceAll('-', '')}.png`;
+}
+
+function isMobileLikeDevice() {
+  const userAgent = navigator.userAgent || '';
+  const isTouchMac = /Macintosh/i.test(userAgent) && Number(navigator.maxTouchPoints || 0) > 1;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent) || isTouchMac;
+}
+
+function downloadBlobFile(blob, filename) {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+async function saveRecordPageImageToDevice() {
+  const titleInput = document.querySelector('.record-generated-page [data-record-title]');
+  if (titleInput) {
+    uiState.recordTitle = titleInput.value || '';
+  }
+
+  const imageData = await captureRecordPageImage();
+  if (!imageData) return false;
+
+  const filename = getRecordPageImageFilename();
+  const blob = composeDataUrlToBlob(imageData);
+  if (!blob) return false;
+
+  if (!isMobileLikeDevice()) {
+    downloadBlobFile(blob, filename);
+    return true;
+  }
+
+  const file = new File([blob], filename, { type: blob.type || 'image/png' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: uiState.recordTitle || 'Memory page',
+      });
+      return true;
+    } catch (error) {
+      if (error?.name === 'AbortError') return false;
+    }
+  }
+
+  downloadBlobFile(blob, filename);
+  return true;
+}
+
 async function saveRecordGeneratedPage({ publish = false } = {}) {
   const selectedIds = uiState.recordSelectedIds || [];
   if (selectedIds.length !== 3) return false;
   const imageData = await captureRecordPageImage();
   if (!imageData) return false;
   const profileName = String(getState().profile?.name || 'you').trim() || 'you';
-  const title = 'A Day in Tokyo';
+  const title = String(uiState.recordTitle || '').trim() || 'A day to remember';
 
   if (publish) {
     addPost({
@@ -6866,6 +6958,7 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
       composeData: {
         source: 'record',
         recordMemoryIds: selectedIds.slice(0, 3),
+        recordTemplateId: uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE,
         title,
       },
     });
@@ -6878,6 +6971,7 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
       composeData: {
         source: 'record',
         recordMemoryIds: selectedIds.slice(0, 3),
+        recordTemplateId: uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE,
         title,
       },
     });
@@ -6891,6 +6985,7 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
   uiState.recordDraft = null;
   uiState.recordEditingId = null;
   uiState.recordSelectedIds = [];
+  uiState.recordTitle = '';
   render();
   return true;
 }
@@ -6991,8 +7086,20 @@ function bindRecordEvents() {
     });
   });
 
+  document.querySelectorAll('[data-record-template]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordTemplateId = button.dataset.recordTemplate || DEFAULT_RECORD_TEMPLATE;
+      renderScreen();
+    });
+  });
+
+  document.querySelector('[data-record-title]')?.addEventListener('input', (event) => {
+    uiState.recordTitle = event.target.value || '';
+  });
+
   document.querySelector('[data-record-create-page]')?.addEventListener('click', () => {
     if ((uiState.recordSelectedIds || []).length !== 3) return;
+    uiState.recordTitle = document.querySelector('[data-record-title]')?.value || uiState.recordTitle || '';
     uiState.recordStage = 'complete';
     renderScreen();
   });
@@ -7002,11 +7109,15 @@ function bindRecordEvents() {
     const previousText = button.textContent;
     button.disabled = true;
     button.textContent = '保存中';
-    const saved = await saveRecordGeneratedPage({ publish: false });
+    button.textContent = '写真保存中';
+    const saved = await saveRecordPageImageToDevice();
     if (!saved) {
       button.disabled = false;
       button.textContent = previousText || '保存する';
+      return;
     }
+    button.disabled = false;
+    button.textContent = previousText || '保存する';
   });
 
   document.querySelector('[data-record-post-page]')?.addEventListener('click', async (event) => {

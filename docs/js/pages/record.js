@@ -1,4 +1,5 @@
 import { getIcon } from '../components/icons.js';
+import { DEFAULT_RECORD_TEMPLATE, getRecordTemplateById, RECORD_TEMPLATES } from '../templates/recordTemplates.js';
 
 function escapeHtml(value = '') {
   return String(value)
@@ -12,6 +13,22 @@ function escapeHtml(value = '') {
 function formatTodayLabel(date = new Date()) {
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 (${weekdays[date.getDay()]})`;
+}
+
+function getDateKeyFromValue(value = '') {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getTodayDateKey() {
+  return getDateKeyFromValue(new Date().toISOString());
+}
+
+function getDateFromKey(dateKey = '') {
+  const match = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date();
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 function getSelectedMemories(memories, selectedIds) {
@@ -68,7 +85,9 @@ function renderRecordPreviewCard(memories) {
   `;
 }
 
-function renderRecordHome(memories) {
+function renderRecordHome(memories, recordDate = '') {
+  const dateLabel = recordDate ? formatTodayLabel(getDateFromKey(recordDate)) : formatTodayLabel();
+  const sectionTitle = recordDate ? '選択した日の思い出' : '今日の思い出';
   return `
     <section class="record-page record-page--home">
       <header class="record-header">
@@ -89,10 +108,12 @@ function renderRecordHome(memories) {
 
       <section class="record-section">
         <div class="record-section__head">
-          <h2>${getIcon('clock')} 今日の思い出</h2>
+          <h2>${getIcon('clock')} ${sectionTitle}</h2>
           ${memories.length ? `<button class="record-section__action" type="button" data-record-stage="select">すべて見る ${getIcon('chevronRight')}</button>` : ''}
         </div>
+        <p class="record-selected-date-label">${dateLabel}</p>
         ${renderMemoryCards(memories)}
+        ${memories.length ? '' : '<p class="record-empty-text">この日の思い出はまだありません。</p>'}
       </section>
 
       ${renderRecordPreviewCard(memories)}
@@ -167,13 +188,44 @@ function renderRecordEdit(memory) {
   `;
 }
 
-function renderRecordSelect(memories, selectedIds) {
+function rectStyle(slot) {
+  return `left:${slot.x}%;top:${slot.y}%;width:${slot.width}%;height:${slot.height}%;`;
+}
+
+function renderRecordTemplatePicker(selectedTemplateId = DEFAULT_RECORD_TEMPLATE) {
+  return `
+    <section class="record-template-picker" aria-label="record template">
+      <div class="record-template-picker__head">
+        <h2>Template</h2>
+        <p>Photos and text are placed automatically.</p>
+      </div>
+      <div class="record-template-grid">
+        ${RECORD_TEMPLATES.map((template) => `
+          <button class="record-template-option ${selectedTemplateId === template.id ? 'is-selected' : ''}" type="button" data-record-template="${template.id}">
+            <img src="${template.src}" alt="${template.label}" />
+            <span>${template.label}</span>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderRecordTitleInput(title = '') {
+  return `
+    <label class="record-title-field">
+      <span>Page title</span>
+      <input type="text" data-record-title value="${escapeHtml(title)}" placeholder="A day to remember" />
+    </label>
+  `;
+}
+
+function renderRecordSelect(memories, selectedIds, selectedTemplateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '') {
   const selected = new Set(selectedIds || []);
   return `
     <section class="record-page record-page--select">
       <header class="record-stack-header">
         <button class="record-select-back" type="button" data-record-back-home aria-label="戻る">${getIcon('returnLeft')}</button>
-        <h1>今日を振り返る</h1>
         <p class="record-select-date">${formatTodayLabel()}</p>
         <div class="record-select-rule"><span></span><i>♡</i><span></span></div>
         <p class="record-select-lead">使いたい写真を選択</p>
@@ -196,6 +248,9 @@ function renderRecordSelect(memories, selectedIds) {
         }).join('')}
       </div>
 
+      ${renderRecordTitleInput(recordTitle)}
+      ${renderRecordTemplatePicker(selectedTemplateId)}
+
       <div class="record-create-bar">
         <p>選択中 <strong>${selected.size}</strong> / 3 枚</p>
         <button class="record-primary-button" type="button" data-record-create-page ${selected.size === 3 ? '' : 'disabled'}>ページを自動作成</button>
@@ -204,34 +259,48 @@ function renderRecordSelect(memories, selectedIds) {
   `;
 }
 
-function renderGeneratedPagePreview(memories) {
-  const [primary, secondary, tertiary] = memories;
-  const renderSlot = (memory, className, fallbackLabel) => {
-    if (!memory) return `<div class="${className} record-generated-slot is-empty">${fallbackLabel}</div>`;
+function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '') {
+  const template = getRecordTemplateById(templateId);
+  const title = String(recordTitle || '').trim() || 'A day to remember';
+  const renderImageSlot = (memory, slot, index) => {
+    if (!memory) return `<div class="record-template-slot record-template-slot--image is-empty" style="${rectStyle(slot)}">Photo ${index + 1}</div>`;
     return `
-      <article class="${className} record-generated-slot">
-        <time>${escapeHtml(memory.time)}</time>
+      <figure class="record-template-slot record-template-slot--image" style="${rectStyle(slot)}">
+        <figcaption><span></span><time>${escapeHtml(memory.time)}</time><span></span></figcaption>
         <img src="${memory.imageData}" alt="" />
-        <div>
-          <strong>${getIcon('pin')} ${escapeHtml(memory.place || 'Tokyo')}</strong>
-          <span>${escapeHtml(memory.memo || '今日の思い出')}</span>
-        </div>
+      </figure>
+    `;
+  };
+  const renderTextSlot = (memory, slot, index) => {
+    if (!memory) return `<div class="record-template-slot record-template-slot--text is-empty" style="${rectStyle(slot)}">Text ${index + 1}</div>`;
+    return `
+      <article class="record-template-slot record-template-slot--text" style="${rectStyle(slot)}">
+        <strong>${getIcon('pin')} ${escapeHtml(memory.place || '場所未設定')}</strong>
+        <p>${escapeHtml(memory.memo || '今日の思い出')}</p>
       </article>
     `;
   };
 
   return `
-    <div class="record-generated-page">
-      <p>COUPLE MEMORIES</p>
-      <h2>A Day in Tokyo</h2>
-      ${renderSlot(primary, 'record-generated-slot--primary', 'Photo 1')}
-      ${renderSlot(secondary, 'record-generated-slot--secondary', 'Photo 2')}
-      ${renderSlot(tertiary, 'record-generated-slot--tertiary', 'Photo 3')}
+    <div class="record-generated-page record-generated-page--template" data-record-template="${template.id}">
+      <img class="record-generated-page__template" src="${template.src}" alt="" />
+      ${template.titleSlot ? `
+        <input
+          class="record-template-slot record-template-slot--title"
+          style="${rectStyle(template.titleSlot)}"
+          type="text"
+          data-record-title
+          value="${escapeHtml(title)}"
+          aria-label="ページタイトル"
+        />
+      ` : ''}
+      ${template.imageSlots.map((slot, index) => renderImageSlot(memories[index], slot, index)).join('')}
+      ${template.textSlots.map((slot, index) => renderTextSlot(memories[index], slot, index)).join('')}
     </div>
   `;
 }
 
-function renderRecordComplete(memories) {
+function renderRecordComplete(memories, templateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '') {
   return `
     <section class="record-page record-page--complete">
       <header class="record-stack-header">
@@ -242,9 +311,9 @@ function renderRecordComplete(memories) {
         <span>${getIcon('heart')}</span>
         <h2>今日の思い出が<br />1ページになりました</h2>
       </div>
-      ${renderGeneratedPagePreview(memories)}
+      ${renderGeneratedPagePreview(memories, templateId, recordTitle)}
       <div class="record-complete-actions">
-        <button type="button" data-record-save-page>${getIcon('download')}<span>保存する</span></button>
+        <button type="button" data-record-save-page>${getIcon('download')}<span>写真を保存</span></button>
         <button type="button" data-record-post-page>${getIcon('camera')}<span>投稿する</span></button>
         <button type="button">${getIcon('bookOpen')}<span>雑誌化する</span></button>
         <button type="button">${getIcon('document')}<span>PDF</span></button>
@@ -255,7 +324,10 @@ function renderRecordComplete(memories) {
 }
 
 export function renderRecord(state, uiState) {
-  const memories = [...(state.recordMemories || [])].sort((a, b) => {
+  const recordDate = uiState.recordDate || getTodayDateKey();
+  const memories = [...(state.recordMemories || [])]
+    .filter((memory) => getDateKeyFromValue(memory.createdAt) === recordDate)
+    .sort((a, b) => {
     const byTime = String(a.time || '').localeCompare(String(b.time || ''));
     if (byTime) return byTime;
     return new Date(a.createdAt) - new Date(b.createdAt);
@@ -264,7 +336,7 @@ export function renderRecord(state, uiState) {
 
   if (stage === 'camera') return renderRecordCamera(uiState.recordDraft || {});
   if (stage === 'edit') return renderRecordEdit(memories.find((memory) => memory.id === uiState.recordEditingId));
-  if (stage === 'select') return renderRecordSelect(memories, uiState.recordSelectedIds || []);
-  if (stage === 'complete') return renderRecordComplete(getSelectedMemories(memories, uiState.recordSelectedIds || []));
-  return renderRecordHome(memories);
+  if (stage === 'select') return renderRecordSelect(memories, uiState.recordSelectedIds || [], uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '');
+  if (stage === 'complete') return renderRecordComplete(getSelectedMemories(memories, uiState.recordSelectedIds || []), uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '');
+  return renderRecordHome(memories, recordDate);
 }
