@@ -12,7 +12,7 @@ import { renderProfile } from './pages/profile.js';
 import { renderPostDetail } from './pages/postDetail.js';
 import { renderRecord } from './pages/record.js';
 import { DEFAULT_COMPOSE_TEMPLATE, getComposeTemplateById } from './templates/index.js';
-import { DEFAULT_RECORD_TEMPLATE } from './templates/recordTemplates.js';
+import { DEFAULT_RECORD_TEMPLATE, getRecordTemplateById } from './templates/recordTemplates.js';
 import {
   FIXED_TEMPLATE_SLOT_KEYS,
   getFixedTemplateLayout,
@@ -6872,11 +6872,208 @@ async function applyRecordPhotoFile(file) {
   renderScreen();
 }
 
+function getRecordSelectedMemoriesForExport() {
+  const selectedIds = uiState.recordSelectedIds || [];
+  const selectedSet = new Set(selectedIds);
+  return selectedIds
+    .map((id) => (getState().recordMemories || []).find((memory) => selectedSet.has(memory.id) && memory.id === id))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function recordSlotToCanvasRect(slot, width, height) {
+  return {
+    x: (slot.x / 100) * width,
+    y: (slot.y / 100) * height,
+    width: (slot.width / 100) * width,
+    height: (slot.height / 100) * height,
+  };
+}
+
+function loadCanvasImage(src) {
+  return new Promise((resolve) => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
+function drawCoverImage(ctx, image, rect) {
+  if (!image) return;
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) return;
+  const scale = Math.max(rect.width / sourceWidth, rect.height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  const drawX = rect.x + (rect.width - drawWidth) / 2;
+  const drawY = rect.y + (rect.height - drawHeight) / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rect.x, rect.y, rect.width, rect.height);
+  ctx.clip();
+  ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
+}
+
+function drawCenteredText(ctx, text, x, y, maxWidth) {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y, maxWidth);
+}
+
+function drawRecordTime(ctx, time, rect) {
+  const y = rect.y - 22;
+  const centerX = rect.x + rect.width / 2;
+  const lineGap = 58;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(48, 38, 35, 0.28)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(rect.x, y);
+  ctx.lineTo(centerX - lineGap, y);
+  ctx.moveTo(centerX + lineGap, y);
+  ctx.lineTo(rect.x + rect.width, y);
+  ctx.stroke();
+  ctx.fillStyle = '#302623';
+  ctx.font = '34px "Cormorant Garamond", "Times New Roman", serif';
+  drawCenteredText(ctx, String(time || ''), centerX, y - 1, lineGap * 1.7);
+  ctx.restore();
+}
+
+function drawLocationPin(ctx, x, y, size) {
+  ctx.save();
+  ctx.fillStyle = '#b46a62';
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.18, size * 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x, y + size * 0.55);
+  ctx.quadraticCurveTo(x - size * 0.45, y, x, y - size * 0.5);
+  ctx.quadraticCurveTo(x + size * 0.45, y, x, y + size * 0.55);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.18, size * 0.13, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const source = String(text || '').replace(/\r/g, '').split('\n');
+  const lines = [];
+  source.forEach((paragraph) => {
+    let line = '';
+    Array.from(paragraph).forEach((char) => {
+      const next = `${line}${char}`;
+      if (line && ctx.measureText(next).width > maxWidth) {
+        lines.push(line);
+        line = char;
+      } else {
+        line = next;
+      }
+    });
+    lines.push(line);
+  });
+  return lines.filter((line) => line.length);
+}
+
+function drawRecordTextSlot(ctx, memory, rect) {
+  const padding = Math.min(rect.width, rect.height) * 0.055;
+  const left = rect.x + padding;
+  const top = rect.y + padding;
+  const maxWidth = rect.width - padding * 2;
+  const place = String(memory?.place || '場所未設定');
+  const memo = String(memory?.memo || '今日の思い出');
+
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  drawLocationPin(ctx, left + 18, top + 27, 34);
+  ctx.fillStyle = '#6f4d48';
+  ctx.font = '600 34px "Shippori Mincho", "Noto Serif JP", serif';
+  ctx.fillText(place, left + 48, top + 4, maxWidth - 48);
+  const underlineWidth = Math.min(maxWidth, Math.max(118, ctx.measureText(place).width + 52));
+  ctx.strokeStyle = 'rgba(48, 38, 35, 0.24)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(left, top + 58);
+  ctx.lineTo(left + underlineWidth, top + 58);
+  ctx.stroke();
+
+  ctx.fillStyle = '#4f4440';
+  ctx.font = '26px "Shippori Mincho", "Noto Serif JP", serif';
+  const memoLines = wrapCanvasText(ctx, memo, maxWidth);
+  const lineHeight = 42;
+  let y = top + 88;
+  const maxY = rect.y + rect.height - padding;
+  memoLines.forEach((line) => {
+    if (y + lineHeight <= maxY) {
+      ctx.fillText(line, left, y, maxWidth);
+      y += lineHeight;
+    }
+  });
+  ctx.restore();
+}
+
+async function renderRecordPageToCanvasDataUrl() {
+  if (document.fonts?.ready) {
+    await Promise.race([
+      document.fonts.ready,
+      new Promise((resolve) => window.setTimeout(resolve, 1000)),
+    ]);
+  }
+  const width = 1414;
+  const height = 2000;
+  const memories = getRecordSelectedMemoriesForExport();
+  if (memories.length !== 3) return '';
+  const template = getRecordTemplateById(uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE);
+  const title = String(uiState.recordTitle || '').trim() || 'A day to remember';
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  if (template.titleSlot) {
+    const titleRect = recordSlotToCanvasRect(template.titleSlot, width, height);
+    ctx.save();
+    ctx.fillStyle = '#302623';
+    ctx.font = '700 58px "Shippori Mincho", "Noto Serif JP", serif';
+    drawCenteredText(ctx, title, titleRect.x + titleRect.width / 2, titleRect.y + titleRect.height / 2, titleRect.width * 0.92);
+    ctx.restore();
+  }
+
+  const images = await Promise.all(memories.map((memory) => loadCanvasImage(memory.imageData)));
+  template.imageSlots.forEach((slot, index) => {
+    const rect = recordSlotToCanvasRect(slot, width, height);
+    if (!images[index]) {
+      ctx.fillStyle = '#ffe4e4';
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      return;
+    }
+    drawRecordTime(ctx, memories[index]?.time, rect);
+    drawCoverImage(ctx, images[index], rect);
+  });
+
+  template.textSlots.forEach((slot, index) => {
+    drawRecordTextSlot(ctx, memories[index], recordSlotToCanvasRect(slot, width, height));
+  });
+
+  return canvas.toDataURL('image/png');
+}
+
 async function captureRecordPageImage() {
-  const page = document.querySelector('.record-generated-page');
-  if (!page) return '';
   try {
-    return await captureComposeFrameToDataUrl(page);
+    return await renderRecordPageToCanvasDataUrl();
   } catch (error) {
     console.warn('Record page capture failed.', error);
     return '';
