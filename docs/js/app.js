@@ -2728,7 +2728,7 @@ async function captureComposeFrameToDataUrl(sourceFrame) {
 
   const serialized = sanitizeSerializedCapture(new XMLSerializer().serializeToString(clone));
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${frameRect.width} ${frameRect.height}">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${frameRect.width}" height="${frameRect.height}" viewBox="0 0 ${frameRect.width} ${frameRect.height}">
       <foreignObject width="100%" height="100%">${serialized}</foreignObject>
     </svg>
   `;
