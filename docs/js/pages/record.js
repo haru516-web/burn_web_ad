@@ -121,6 +121,12 @@ function renderRecordHome(memories, recordDate = '') {
 
 function renderRecordCamera(draft) {
   const hasPhoto = Boolean(draft?.imageData);
+  const activeFilter = draft?.filter || 'none';
+  const filters = [
+    { id: 'none', label: 'フィルターなし' },
+    { id: 'canon-ixy', label: 'Canon IXY' },
+    { id: 'nikon-d200', label: 'Nikon D200' },
+  ];
   return `
     <section class="record-page record-page--camera">
       <header class="record-camera-header">
@@ -131,12 +137,20 @@ function renderRecordCamera(draft) {
 
       <div class="record-camera-preview ${hasPhoto ? 'has-photo' : ''}">
         ${hasPhoto
-          ? `<img src="${draft.imageData}" alt="" />`
-          : `<div class="record-camera-placeholder">${getIcon('camera')}<p>シャッターを押すと写真がここに表示されます。</p></div>`}
+          ? `<img class="record-filter-${escapeHtml(activeFilter)}" src="${draft.imageData}" alt="" />`
+          : `<video class="record-camera-video record-filter-${escapeHtml(activeFilter)}" data-record-camera-video autoplay playsinline muted></video>
+             <div class="record-camera-placeholder" data-record-camera-placeholder>${getIcon('camera')}<p>カメラを起動しています</p></div>`}
         <div class="record-time-pill">${getIcon('clock')} <strong>${escapeHtml(draft?.time || '--:--')}</strong> <span>自動記録</span></div>
       </div>
 
       <section class="record-capture-sheet ${hasPhoto ? 'is-expanded' : ''}">
+        <div class="record-filter-bar" aria-label="フィルター">
+          ${filters.map((filter) => `
+            <button class="${activeFilter === filter.id ? 'is-selected' : ''}" type="button" data-record-filter="${filter.id}">
+              ${escapeHtml(filter.label)}
+            </button>
+          `).join('')}
+        </div>
         ${hasPhoto ? `
           <label class="record-field">
             <span>場所</span>
@@ -260,6 +274,14 @@ function renderRecordSelect(memories, selectedIds, selectedTemplateId = DEFAULT_
 function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '') {
   const template = getRecordTemplateById(templateId);
   const title = String(recordTitle || '').trim() || 'A day to remember';
+  const textDensityClass = (memory) => {
+    const placeLength = String(memory?.place || '').trim().length;
+    const memoLength = String(memory?.memo || '').trim().length;
+    const score = placeLength * 1.4 + memoLength;
+    if (score >= 62) return ' is-very-dense';
+    if (score >= 38) return ' is-dense';
+    return '';
+  };
   const renderImageSlot = (memory, slot, index) => {
     if (!memory) return `<div class="record-template-slot record-template-slot--image is-empty" style="${rectStyle(slot)}">Photo ${index + 1}</div>`;
     return `
@@ -272,7 +294,7 @@ function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLA
   const renderTextSlot = (memory, slot, index) => {
     if (!memory) return `<div class="record-template-slot record-template-slot--text is-empty" style="${rectStyle(slot)}">Text ${index + 1}</div>`;
     return `
-      <article class="record-template-slot record-template-slot--text" style="${rectStyle(slot)}">
+      <article class="record-template-slot record-template-slot--text${textDensityClass(memory)}" style="${rectStyle(slot)}">
         <strong>${getIcon('pin')} ${escapeHtml(memory.place || '場所未設定')}</strong>
         <p>${escapeHtml(memory.memo || '今日の思い出')}</p>
       </article>

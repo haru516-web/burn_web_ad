@@ -86,6 +86,7 @@ const uiState = {
 };
 let composeSelectionChangeCleanup = null;
 let viewportStabilityInstalled = false;
+let recordCameraStream = null;
 
 function resetWindowScroll() {
   if (typeof window === 'undefined') return;
@@ -560,6 +561,9 @@ function renderModals() {
 function renderScreen() {
   const screenArea = document.getElementById('screenArea');
   if (!screenArea) return;
+  if (!(uiState.screen === 'record' && uiState.recordStage === 'camera' && !uiState.recordDraft?.imageData)) {
+    stopRecordCameraStream();
+  }
   screenArea.innerHTML = getPageHtml();
   bindPageEvents();
   renderModals();
@@ -6872,6 +6876,207 @@ async function applyRecordPhotoFile(file) {
   renderScreen();
 }
 
+const RECORD_CAMERA_FILTER_PREVIEWS = {
+  none: 'none',
+  'canon-ixy': 'contrast(1.12) saturate(1.24) brightness(1.07) sepia(0.08)',
+  'nikon-d200': 'contrast(1.2) saturate(0.94) brightness(0.96) sepia(0.04)',
+};
+
+function getRecordCameraFilterValue(filterId = 'none') {
+  return RECORD_CAMERA_FILTER_PREVIEWS[filterId] || RECORD_CAMERA_FILTER_PREVIEWS.none;
+}
+
+function stopRecordCameraStream() {
+  if (!recordCameraStream) return;
+  recordCameraStream.getTracks().forEach((track) => track.stop());
+  recordCameraStream = null;
+}
+
+async function startRecordCameraStream() {
+  const video = document.querySelector('[data-record-camera-video]');
+  if (!video || !navigator.mediaDevices?.getUserMedia) return;
+  stopRecordCameraStream();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    recordCameraStream = stream;
+    video.srcObject = stream;
+    await video.play();
+    video.closest('.record-camera-preview')?.classList.add('is-live');
+  } catch (error) {
+    console.warn('Record camera stream failed.', error);
+  }
+}
+
+function clampChannel(value) {
+  return Math.max(0, Math.min(255, value));
+}
+
+function adjustRecordCameraPixel(r, g, b, options) {
+  const contrast = options.contrast || 1;
+  const exposure = options.exposure || 0;
+  const saturation = options.saturation || 1;
+  const warmth = options.warmth || 0;
+  const greenShift = options.greenShift || 0;
+  let nr = (r - 128) * contrast + 128 + exposure;
+  let ng = (g - 128) * contrast + 128 + exposure;
+  let nb = (b - 128) * contrast + 128 + exposure;
+  const luma = nr * 0.299 + ng * 0.587 + nb * 0.114;
+  nr = luma + (nr - luma) * saturation + warmth;
+  ng = luma + (ng - luma) * saturation + greenShift;
+  nb = luma + (nb - luma) * saturation - warmth * 0.45;
+  return [nr, ng, nb];
+}
+
+function drawRecordCameraSource(ctx, source, outputWidth, outputHeight, zoom = 1) {
+  const sourceWidth = source.videoWidth || source.naturalWidth || source.width;
+  const sourceHeight = source.videoHeight || source.naturalHeight || source.height;
+  if (!sourceWidth || !sourceHeight) return false;
+  const scale = Math.max(outputWidth / sourceWidth, outputHeight / sourceHeight) * zoom;
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  ctx.drawImage(
+    source,
+    (outputWidth - drawWidth) / 2,
+    (outputHeight - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+  return true;
+}
+
+function applyRecordCameraPixelFilter(ctx, width, height, filterId) {
+  if (filterId === 'none') return;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const maxDistance = Math.hypot(centerX, centerY);
+
+  for (let index = 0; index < data.length; index += 4) {
+    const pixelIndex = index / 4;
+    const x = pixelIndex % width;
+    const y = Math.floor(pixelIndex / width);
+    const normalizedDistance = Math.hypot(x - centerX, y - centerY) / maxDistance;
+    const luma = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+    const random = Math.random() - 0.5;
+
+    if (filterId === 'canon-ixy') {
+      const flashLift = Math.max(0, 1 - normalizedDistance * 1.75) * 34;
+      const vignette = normalizedDistance * normalizedDistance * 22;
+      const highlightClip = luma > 210 ? (luma - 210) * 0.5 : 0;
+      const colorNoise = (luma < 105 ? 16 : 5) * random;
+      let [r, g, b] = adjustRecordCameraPixel(data[index], data[index + 1], data[index + 2], {
+        contrast: 1.13,
+        exposure: 14 + flashLift - vignette + highlightClip,
+        saturation: 1.2,
+        warmth: 5,
+        greenShift: 1,
+      });
+      r += colorNoise * 1.25;
+      g += colorNoise * 0.35;
+      b -= colorNoise * 1.1;
+      data[index] = clampChannel(r);
+      data[index + 1] = clampChannel(g);
+      data[index + 2] = clampChannel(b);
+    } else if (filterId === 'nikon-d200') {
+      const vignette = normalizedDistance * normalizedDistance * 30;
+      const shadowPull = luma < 90 ? -10 : 0;
+      const grain = (luma < 120 ? 12 : 5) * random;
+      let [r, g, b] = adjustRecordCameraPixel(data[index], data[index + 1], data[index + 2], {
+        contrast: 1.22,
+        exposure: -5 - vignette + shadowPull,
+        saturation: 0.98,
+        warmth: 3,
+        greenShift: 2,
+      });
+      r += grain;
+      g += grain * 0.9;
+      b += grain * 0.75;
+      data[index] = clampChannel(r);
+      data[index + 1] = clampChannel(g);
+      data[index + 2] = clampChannel(b);
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function addRecordCameraSoftness(ctx, width, height, filterId) {
+  if (filterId === 'none') return;
+  const overlay = document.createElement('canvas');
+  overlay.width = width;
+  overlay.height = height;
+  const overlayCtx = overlay.getContext('2d');
+  if (!overlayCtx) return;
+  overlayCtx.filter = filterId === 'canon-ixy' ? 'blur(0.55px)' : 'blur(0.25px)';
+  overlayCtx.drawImage(ctx.canvas, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = filterId === 'canon-ixy' ? 0.22 : 0.12;
+  ctx.drawImage(overlay, 0, 0);
+  ctx.restore();
+}
+
+function drawFilteredImageToCanvas(source, filterId = 'none') {
+  const sourceWidth = source.videoWidth || source.naturalWidth || source.width;
+  const sourceHeight = source.videoHeight || source.naturalHeight || source.height;
+  if (!sourceWidth || !sourceHeight) return '';
+  const isIxy = filterId === 'canon-ixy';
+  const isD200 = filterId === 'nikon-d200';
+  const aspectRatio = isIxy ? 4 / 3 : isD200 ? 3 / 2 : sourceWidth / sourceHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.min(1600, sourceWidth);
+  canvas.height = Math.round(canvas.width / aspectRatio);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  const zoom = isIxy ? 1.16 : isD200 ? 1.32 : 1;
+  if (!drawRecordCameraSource(ctx, source, canvas.width, canvas.height, zoom)) return '';
+  applyRecordCameraPixelFilter(ctx, canvas.width, canvas.height, filterId);
+  addRecordCameraSoftness(ctx, canvas.width, canvas.height, filterId);
+  const quality = isIxy ? 0.74 : isD200 ? 0.88 : 0.92;
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+async function applyRecordAlbumFile(file) {
+  if (!file) return;
+  const imageData = await fileToWebpDataUrl(file, { maxWidth: 1600, quality: 0.88 });
+  const image = await loadCanvasImage(imageData);
+  const filteredImageData = image
+    ? drawFilteredImageToCanvas(image, uiState.recordDraft?.filter || 'none')
+    : imageData;
+  const now = new Date();
+  uiState.recordDraft = {
+    ...(uiState.recordDraft || {}),
+    imageData: filteredImageData || imageData,
+    filter: 'none',
+    time: uiState.recordDraft?.time || now.toTimeString().slice(0, 5),
+    place: uiState.recordDraft?.place || '',
+    memo: uiState.recordDraft?.memo || '',
+  };
+  stopRecordCameraStream();
+  renderScreen();
+}
+
+function captureRecordCameraPhoto() {
+  const video = document.querySelector('[data-record-camera-video]');
+  if (!video) return false;
+  const imageData = drawFilteredImageToCanvas(video, uiState.recordDraft?.filter || 'none');
+  if (!imageData) return false;
+  uiState.recordDraft = {
+    ...(uiState.recordDraft || {}),
+    imageData,
+    filter: 'none',
+    time: new Date().toTimeString().slice(0, 5),
+    place: uiState.recordDraft?.place || '',
+    memo: uiState.recordDraft?.memo || '',
+  };
+  stopRecordCameraStream();
+  renderScreen();
+  return true;
+}
+
 function getRecordSelectedMemoriesForExport() {
   const selectedIds = uiState.recordSelectedIds || [];
   const selectedSet = new Set(selectedIds);
@@ -6990,40 +7195,77 @@ function wrapCanvasText(ctx, text, maxWidth) {
   return lines.filter((line) => line.length);
 }
 
+function getRecordTextSlotLayout(ctx, place, memo, rect, scale, maxWidth) {
+  const minPlaceSize = 12.4 * scale;
+  const minMemoSize = 8.8 * scale;
+  let placeSize = 16.2 * scale;
+  let memoSize = 11.8 * scale;
+  let placeLines = [];
+  let memoLines = [];
+  let lineHeight = memoSize * 1.74;
+  const availableHeight = rect.height - Math.min(rect.width, rect.height) * 0.11;
+
+  for (let attempt = 0; attempt < 18; attempt += 1) {
+    ctx.font = `600 ${placeSize}px "Shippori Mincho", "Noto Serif JP", serif`;
+    placeLines = wrapCanvasText(ctx, place, maxWidth - 22 * scale).slice(0, 2);
+    const placeBlockHeight = Math.max(placeSize * 1.32, placeLines.length * placeSize * 1.28);
+    ctx.font = `${memoSize}px "Shippori Mincho", "Noto Serif JP", serif`;
+    memoLines = wrapCanvasText(ctx, memo, maxWidth);
+    lineHeight = memoSize * 1.74;
+    const totalHeight = placeBlockHeight + 15 * scale + memoLines.length * lineHeight;
+    if (totalHeight <= availableHeight || (placeSize <= minPlaceSize && memoSize <= minMemoSize)) {
+      return { placeSize, memoSize, placeLines, memoLines, lineHeight, placeBlockHeight, totalHeight };
+    }
+    placeSize = Math.max(minPlaceSize, placeSize * 0.94);
+    memoSize = Math.max(minMemoSize, memoSize * 0.92);
+  }
+
+  return { placeSize, memoSize, placeLines, memoLines, lineHeight, placeBlockHeight: placeSize * 1.32, totalHeight: availableHeight };
+}
+
 function drawRecordTextSlot(ctx, memory, rect) {
   const scale = recordExportScale(1414);
   const padding = Math.min(rect.width, rect.height) * 0.055;
   const left = rect.x + padding;
-  const top = rect.y + padding;
   const maxWidth = rect.width - padding * 2;
   const place = String(memory?.place || '場所未設定');
   const memo = String(memory?.memo || '今日の思い出');
+  const layout = getRecordTextSlotLayout(ctx, place, memo, rect, scale, maxWidth);
+  const maxY = rect.y + rect.height - padding;
+  const baseTop = rect.y + padding;
+  const liftedTop = Math.max(rect.y + padding * 0.25, maxY - layout.totalHeight - padding * 0.4);
+  const top = Math.min(baseTop, liftedTop);
 
   ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  drawLocationPin(ctx, left + 9 * scale, top + 13 * scale, 18 * scale);
+  drawLocationPin(ctx, left + 8 * scale, top + layout.placeSize * 0.72, Math.max(12 * scale, layout.placeSize * 0.98));
   ctx.fillStyle = '#6f4d48';
-  ctx.font = `600 ${17.92 * scale}px "Shippori Mincho", "Noto Serif JP", serif`;
-  ctx.fillText(place, left + 24 * scale, top, maxWidth - 24 * scale);
-  const underlineWidth = Math.min(maxWidth, Math.max(118 * scale, ctx.measureText(place).width + 24 * scale));
+  ctx.font = `600 ${layout.placeSize}px "Shippori Mincho", "Noto Serif JP", serif`;
+  let placeY = top;
+  layout.placeLines.forEach((line) => {
+    ctx.fillText(line, left + 22 * scale, placeY, maxWidth - 22 * scale);
+    placeY += layout.placeSize * 1.28;
+  });
+  const longestPlaceWidth = layout.placeLines.length
+    ? Math.max(...layout.placeLines.map((line) => ctx.measureText(line).width), 0)
+    : 0;
+  const underlineY = top + layout.placeBlockHeight + 4 * scale;
+  const underlineWidth = Math.min(maxWidth, Math.max(82 * scale, longestPlaceWidth + 24 * scale));
   ctx.strokeStyle = 'rgba(48, 38, 35, 0.24)';
   ctx.lineWidth = 1.4 * scale;
   ctx.beginPath();
-  ctx.moveTo(left, top + 30 * scale);
-  ctx.lineTo(left + underlineWidth, top + 30 * scale);
+  ctx.moveTo(left, underlineY);
+  ctx.lineTo(left + underlineWidth, underlineY);
   ctx.stroke();
 
   ctx.fillStyle = '#4f4440';
-  ctx.font = `${13.12 * scale}px "Shippori Mincho", "Noto Serif JP", serif`;
-  const memoLines = wrapCanvasText(ctx, memo, maxWidth);
-  const lineHeight = 22.3 * scale;
-  let y = top + 43 * scale;
-  const maxY = rect.y + rect.height - padding;
-  memoLines.forEach((line) => {
-    if (y + lineHeight <= maxY) {
+  ctx.font = `${layout.memoSize}px "Shippori Mincho", "Noto Serif JP", serif`;
+  let y = underlineY + 13 * scale;
+  layout.memoLines.forEach((line) => {
+    if (y + layout.lineHeight <= maxY) {
       ctx.fillText(line, left, y, maxWidth);
-      y += lineHeight;
+      y += layout.lineHeight;
     }
   });
   ctx.restore();
@@ -7196,6 +7438,12 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
 }
 
 function bindRecordEvents() {
+  if (uiState.recordStage === 'camera' && !uiState.recordDraft?.imageData) {
+    startRecordCameraStream();
+  } else {
+    stopRecordCameraStream();
+  }
+
   document.querySelectorAll('[data-record-stage]').forEach((button) => {
     button.addEventListener('click', () => {
       uiState.recordStage = button.dataset.recordStage || 'home';
@@ -7208,6 +7456,7 @@ function bindRecordEvents() {
 
   document.querySelectorAll('[data-record-back-home]').forEach((button) => {
     button.addEventListener('click', () => {
+      stopRecordCameraStream();
       uiState.recordStage = 'home';
       uiState.recordDraft = null;
       uiState.recordEditingId = null;
@@ -7223,12 +7472,14 @@ function bindRecordEvents() {
         time: new Date().toTimeString().slice(0, 5),
         place: '',
         memo: '',
+        filter: 'none',
       };
       renderScreen();
     });
   });
 
   document.querySelector('[data-record-open-camera-input]')?.addEventListener('click', () => {
+    if (captureRecordCameraPhoto()) return;
     document.querySelector('[data-record-camera-input]')?.click();
   });
 
@@ -7238,8 +7489,18 @@ function bindRecordEvents() {
 
   document.querySelectorAll('[data-record-camera-input], [data-record-album-input]').forEach((input) => {
     input.addEventListener('change', async (event) => {
-      await applyRecordPhotoFile(event.target.files?.[0]);
+      await applyRecordAlbumFile(event.target.files?.[0]);
       event.target.value = '';
+    });
+  });
+
+  document.querySelectorAll('[data-record-filter]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.recordDraft = {
+        ...(uiState.recordDraft || {}),
+        filter: button.dataset.recordFilter || 'none',
+      };
+      renderScreen();
     });
   });
 
@@ -7251,6 +7512,7 @@ function bindRecordEvents() {
       place: document.querySelector('[data-record-place]')?.value || draft.place || '',
       memo: document.querySelector('[data-record-memo]')?.value || draft.memo || '',
     });
+    stopRecordCameraStream();
     uiState.recordDraft = null;
     uiState.recordStage = 'select';
     uiState.recordSelectedIds = [saved.id];

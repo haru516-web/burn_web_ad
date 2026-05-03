@@ -479,6 +479,12 @@
   object-fit: cover;
 }
 
+.record-camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .record-camera-placeholder {
   display: grid;
   gap: 12px;
@@ -491,6 +497,48 @@
 .record-camera-placeholder svg {
   width: 54px;
   height: 54px;
+}
+
+.record-camera-preview:has(.record-camera-video[srcObject]) .record-camera-placeholder,
+.record-camera-preview.is-live .record-camera-placeholder {
+  display: none;
+}
+
+.record-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.record-filter-bar button {
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid rgba(93, 73, 66, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #6b5a52;
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.record-filter-bar button.is-selected {
+  border-color: rgba(181, 98, 92, 0.5);
+  color: #7d514c;
+  background: #f8e7e3;
+  box-shadow: 0 8px 18px rgba(181, 98, 92, 0.12);
+}
+
+.record-filter-none {
+  filter: none;
+}
+
+.record-filter-canon-ixy {
+  filter: contrast(1.12) saturate(1.24) brightness(1.07) sepia(0.08);
+}
+
+.record-filter-nikon-d200 {
+  filter: contrast(1.2) saturate(0.94) brightness(0.96) sepia(0.04);
 }
 
 .record-time-pill {
@@ -1184,9 +1232,19 @@
   align-content: start;
   gap: 8px;
   padding: 5.5%;
-  overflow: visible;
+  overflow: hidden;
   background: transparent;
   text-align: left;
+}
+
+.record-template-slot--text.is-dense {
+  gap: 5px;
+  padding: 4.5%;
+}
+
+.record-template-slot--text.is-very-dense {
+  gap: 3px;
+  padding: 3.8%;
 }
 
 .record-template-slot--text::before,
@@ -1198,31 +1256,55 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  width: max-content;
+  width: fit-content;
   max-width: 100%;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(48, 38, 35, 0.24);
   color: #6f4d48;
   font-family: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
-  font-size: clamp(0.82rem, 2.55vw, 1.12rem);
+  font-size: clamp(0.74rem, 2.3vw, 1.02rem);
   font-weight: 600;
   line-height: 1.35;
 }
 
+.record-template-slot--text.is-dense strong {
+  gap: 5px;
+  padding-bottom: 4px;
+  font-size: clamp(0.66rem, 2.05vw, 0.92rem);
+  line-height: 1.28;
+}
+
+.record-template-slot--text.is-very-dense strong {
+  gap: 4px;
+  padding-bottom: 3px;
+  font-size: clamp(0.58rem, 1.8vw, 0.82rem);
+  line-height: 1.22;
+}
+
 .record-template-slot--text strong svg {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: #b46a62;
 }
 
 .record-template-slot--text p {
   margin: 0;
-  overflow: visible;
+  overflow: hidden;
   color: #4f4440;
   font-family: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
-  font-size: clamp(0.64rem, 1.85vw, 0.82rem);
-  line-height: 1.7;
+  font-size: clamp(0.58rem, 1.68vw, 0.74rem);
+  line-height: 1.68;
+}
+
+.record-template-slot--text.is-dense p {
+  font-size: clamp(0.52rem, 1.5vw, 0.66rem);
+  line-height: 1.55;
+}
+
+.record-template-slot--text.is-very-dense p {
+  font-size: clamp(0.46rem, 1.32vw, 0.58rem);
+  line-height: 1.45;
 }
 
 .record-template-slot.is-empty {
