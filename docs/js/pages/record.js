@@ -179,13 +179,12 @@ function renderRecordCamera(draft) {
           </label>
         ` : ''}
         <div class="record-camera-actions">
-          <label class="record-secondary-button record-file-button" data-record-open-album>
+          <button class="record-secondary-button record-file-button" type="button" data-record-open-album>
             ${getIcon('image')} アルバム
-            <input class="record-file-input" type="file" accept="image/*" data-record-album-input />
-          </label>
-          <label class="record-shutter" data-record-open-camera-input aria-label="写真を撮る">
-            <input class="record-file-input" type="file" accept="image/*" capture="${activeFacingMode === 'user' ? 'user' : 'environment'}" data-record-camera-input />
-          </label>
+          </button>
+          <input class="record-file-input" type="file" accept="image/*" data-record-album-input />
+          <button class="record-shutter" type="button" data-record-open-camera-input aria-label="写真を撮る"></button>
+          <input class="record-file-input" type="file" accept="image/*" capture="${activeFacingMode === 'user' ? 'user' : 'environment'}" data-record-camera-input />
           <button class="record-secondary-button record-save-button" type="button" data-record-save ${hasPhoto ? '' : 'disabled'}>保存</button>
         </div>
       </section>
