@@ -28,6 +28,13 @@ const background19 = new URL('../../references/record_background/back_ex19.png',
 const background20 = new URL('../../references/record_background/back_ex20.png', import.meta.url).href;
 const background21 = new URL('../../references/record_background/back_ex21.png', import.meta.url).href;
 const background22 = new URL('../../references/record_background/back_ex22.png', import.meta.url).href;
+const background23 = new URL('../../references/record_background/back_ex23.png', import.meta.url).href;
+const background24 = new URL('../../references/record_background/back_ex24.png', import.meta.url).href;
+const background25 = new URL('../../references/record_background/back_ex25.png', import.meta.url).href;
+const background26 = new URL('../../references/record_background/back_ex26.png', import.meta.url).href;
+const background27 = new URL('../../references/record_background/back_ex27.png', import.meta.url).href;
+const background28 = new URL('../../references/record_background/back_ex28.png', import.meta.url).href;
+const background29 = new URL('../../references/record_background/back_ex29.png', import.meta.url).href;
 const backgroundGalMobby = new URL('../../references/record_background/back_ex_galmobby.png', import.meta.url).href;
 const backgroundGalPink = new URL('../../references/record_background/back_ex_galpink.png', import.meta.url).href;
 const backgroundYankiMobby = new URL('../../references/record_background/back_ex_yankimobby.png', import.meta.url).href;
@@ -185,6 +192,13 @@ export const RECORD_BACKGROUNDS = [
   { id: 'record-background-20', label: 'Background 20', src: background20 },
   { id: 'record-background-21', label: 'Background 21', src: background21 },
   { id: 'record-background-22', label: 'Background 22', src: background22 },
+  { id: 'record-background-23', label: 'Background 23', src: background23 },
+  { id: 'record-background-24', label: 'Background 24', src: background24 },
+  { id: 'record-background-25', label: 'Background 25', src: background25 },
+  { id: 'record-background-26', label: 'Background 26', src: background26 },
+  { id: 'record-background-27', label: 'Background 27', src: background27 },
+  { id: 'record-background-28', label: 'Background 28', src: background28 },
+  { id: 'record-background-29', label: 'Background 29', src: background29 },
   { id: 'record-background-galmobby', label: 'Gal Mobby', src: backgroundGalMobby },
   { id: 'record-background-galpink', label: 'Gal Pink', src: backgroundGalPink },
   { id: 'record-background-yankimobby', label: 'Yanki Mobby', src: backgroundYankiMobby },
