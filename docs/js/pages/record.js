@@ -136,6 +136,8 @@ function renderRecordCamera(draft) {
   const activeFilter = draft?.filter || 'none';
   const activeFacingMode = draft?.facingMode === 'user' ? 'user' : 'environment';
   const activeFrame = draft?.frame === 'portrait' ? 'portrait' : 'landscape';
+  const activeZoom = Math.min(5, Math.max(1, Number(draft?.zoom) || 1));
+  const zoomPercent = ((activeZoom - 1) / 4) * 100;
   const filters = [
     { id: 'none', label: 'フィルターなし' },
     { id: 'canon-ixy', label: 'Canon IXY' },
@@ -149,18 +151,33 @@ function renderRecordCamera(draft) {
         <span>${getIcon('bolt')}</span>
       </header>
 
-      <div class="record-camera-preview record-camera-preview--${activeFrame} ${hasPhoto ? 'has-photo' : ''}">
+      <div class="record-camera-stage record-camera-stage--${activeFrame} ${hasPhoto ? 'has-photo' : ''}">
+        <div class="record-camera-preview record-camera-preview--${activeFrame} ${hasPhoto ? 'has-photo' : ''}">
         ${hasPhoto
           ? `<img class="record-filter-${escapeHtml(activeFilter)}" src="${draft.imageData}" alt="" />`
           : `<button class="record-frame-switch" type="button" data-record-switch-frame aria-label="写真枠を切り替え">
                <span>${activeFrame === 'portrait' ? '縦' : '横'}</span>
              </button>
-             <video class="record-camera-video record-filter-${escapeHtml(activeFilter)}" data-record-camera-video autoplay playsinline muted></video>
+             <video class="record-camera-video record-filter-${escapeHtml(activeFilter)}" data-record-camera-video autoplay playsinline muted style="transform:scale(${activeZoom});"></video>
              <button class="record-camera-switch" type="button" data-record-switch-camera aria-label="カメラを切り替え">
                ${getIcon('refreshCw')}
                <span>${activeFacingMode === 'user' ? '内カメ' : '外カメ'}</span>
              </button>
              <div class="record-camera-placeholder" data-record-camera-placeholder>${getIcon('camera')}<p>カメラを起動しています</p></div>`}
+        </div>
+        ${hasPhoto ? '' : `
+          <div class="record-camera-zoom" style="--record-camera-zoom-progress:${zoomPercent}%">
+            <div class="record-camera-zoom__value">${activeZoom.toFixed(activeZoom % 1 === 0 ? 0 : 1)}x</div>
+            <input type="range" min="1" max="5" step="0.1" value="${activeZoom}" data-record-camera-zoom aria-label="zoom" />
+            <div class="record-camera-zoom__ticks" aria-hidden="true">
+              <span>1x</span>
+              <span>2x</span>
+              <span>3x</span>
+              <span>4x</span>
+              <span>5x</span>
+            </div>
+          </div>
+        `}
       </div>
 
       <section class="record-capture-sheet ${hasPhoto ? 'is-expanded' : ''}">

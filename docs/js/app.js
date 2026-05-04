@@ -7059,7 +7059,7 @@ function getRecordCaptureAspectRatio(frame = uiState.recordDraft?.frame) {
   return frame === 'portrait' ? 0.772 : 1.183;
 }
 
-function drawFilteredImageToCanvas(source, filterId = 'none', frame = uiState.recordDraft?.frame) {
+function drawFilteredImageToCanvas(source, filterId = 'none', frame = uiState.recordDraft?.frame, cameraZoom = uiState.recordDraft?.zoom) {
   const sourceWidth = source.videoWidth || source.naturalWidth || source.width;
   const sourceHeight = source.videoHeight || source.naturalHeight || source.height;
   if (!sourceWidth || !sourceHeight) return '';
@@ -7071,7 +7071,8 @@ function drawFilteredImageToCanvas(source, filterId = 'none', frame = uiState.re
   canvas.height = Math.round(canvas.width / aspectRatio);
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
-  const zoom = isIxy ? 1.16 : isD200 ? 1.32 : 1;
+  const filterZoom = isIxy ? 1.16 : isD200 ? 1.32 : 1;
+  const zoom = filterZoom * Math.min(5, Math.max(1, Number(cameraZoom) || 1));
   if (!drawRecordCameraSource(ctx, source, canvas.width, canvas.height, zoom)) return '';
   applyRecordCameraPixelFilter(ctx, canvas.width, canvas.height, filterId);
   addRecordCameraSoftness(ctx, canvas.width, canvas.height, filterId);
@@ -7625,6 +7626,7 @@ function bindRecordEvents() {
         filter: 'none',
         facingMode: 'environment',
         frame: 'landscape',
+        zoom: 1,
       };
       renderScreen();
     });
@@ -7634,6 +7636,7 @@ function bindRecordEvents() {
     uiState.recordDraft = {
       ...(uiState.recordDraft || {}),
       frame: uiState.recordDraft?.frame === 'portrait' ? 'landscape' : 'portrait',
+      zoom: Math.min(5, Math.max(1, Number(uiState.recordDraft?.zoom) || 1)),
     };
     renderScreen();
   });
@@ -7642,9 +7645,24 @@ function bindRecordEvents() {
     uiState.recordDraft = {
       ...(uiState.recordDraft || {}),
       facingMode: uiState.recordDraft?.facingMode === 'user' ? 'environment' : 'user',
+      zoom: Math.min(5, Math.max(1, Number(uiState.recordDraft?.zoom) || 1)),
     };
     stopRecordCameraStream();
     renderScreen();
+  });
+
+  document.querySelector('[data-record-camera-zoom]')?.addEventListener('input', (event) => {
+    const zoom = Math.min(5, Math.max(1, Number(event.target.value) || 1));
+    uiState.recordDraft = {
+      ...(uiState.recordDraft || {}),
+      zoom,
+    };
+    const video = document.querySelector('[data-record-camera-video]');
+    if (video) video.style.transform = `scale(${zoom})`;
+    const control = event.target.closest('.record-camera-zoom');
+    if (control) control.style.setProperty('--record-camera-zoom-progress', `${((zoom - 1) / 4) * 100}%`);
+    const value = control?.querySelector('.record-camera-zoom__value');
+    if (value) value.textContent = `${zoom.toFixed(zoom % 1 === 0 ? 0 : 1)}x`;
   });
 
   document.querySelector('[data-record-open-camera-input]')?.addEventListener('click', () => {
