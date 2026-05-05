@@ -532,13 +532,28 @@ function renderAuthScreen() {
           </div>
 
           <form class="auth-form" data-auth-form>
+            ${isSignup ? `
+              <label class="auth-field">
+                <span>&#21517;&#21069;</span>
+                <input type="text" name="name" autocomplete="name" maxlength="24" required placeholder="MIYU" />
+              </label>
+            ` : ''}
             <label class="auth-field">
               <span>メールアドレス</span>
               <input type="email" name="email" autocomplete="email" required placeholder="you@example.com" />
             </label>
             <label class="auth-field">
               <span>パスワード</span>
-              <input type="password" name="password" autocomplete="${isSignup ? 'new-password' : 'current-password'}" minlength="6" required placeholder="6文字以上" />
+              <span class="auth-password-wrap">
+                
+<input type="password" name="password" autocomplete="${isSignup ? 'new-password' : 'current-password'}" minlength="6" required placeholder="6文字以上" />
+                <button class="auth-password-toggle" type="button" data-auth-password-toggle aria-label="パスワードを表示" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3.8 12s3.1-5.4 8.2-5.4 8.2 5.4 8.2 5.4-3.1 5.4-8.2 5.4S3.8 12 3.8 12Z"/>
+                    <circle cx="12" cy="12" r="2.35"/>
+                  </svg>
+                </button>
+              </span>
             </label>
             <button class="auth-submit" type="submit" ${uiState.authBusy ? 'disabled' : ''}>
               ${uiState.authBusy ? '送信中' : isSignup ? '登録する' : 'ログイン'}
@@ -8419,12 +8434,26 @@ function bindAuthEvents() {
   });
 
   const form = document.querySelector('[data-auth-form]');
+  document.querySelectorAll('[data-auth-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = form?.querySelector('input[name="password"]');
+      if (!input) return;
+      const shouldShow = input.type === 'password';
+      input.type = shouldShow ? 'text' : 'password';
+      button.classList.toggle('is-visible', shouldShow);
+      button.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+      button.setAttribute('aria-label', shouldShow ? 'パスワードを非表示' : 'パスワードを表示');
+    });
+  });
+
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (uiState.authBusy) return;
     const formData = new FormData(form);
+    const name = String(formData.get('name') || '').trim();
     const email = String(formData.get('email') || '').trim();
     const password = String(formData.get('password') || '');
+    if (uiState.authMode === 'signup' && !name) return;
     if (!email || !password) return;
 
     uiState.authBusy = true;
@@ -8434,7 +8463,7 @@ function bindAuthEvents() {
 
     try {
       const result = uiState.authMode === 'signup'
-        ? await signUpWithEmail(email, password)
+        ? await signUpWithEmail(email, password, { name })
         : await signInWithEmailPassword(email, password);
 
       if (result.error) {
@@ -8442,8 +8471,18 @@ function bindAuthEvents() {
       }
 
       if (uiState.authMode === 'signup' && !result.data.session) {
+        updateProfile({
+          ...getState().profile,
+          name,
+        });
         uiState.authMessage = '確認メールを送信しました。メール内のリンクを開いてからログインしてください。';
       } else {
+        if (uiState.authMode === 'signup' && name) {
+          updateProfile({
+            ...getState().profile,
+            name,
+          });
+        }
         uiState.authMessage = '';
       }
     } catch (error) {
@@ -8545,6 +8584,13 @@ function applyAuthSession(session) {
   uiState.authStatus = session?.user ? 'authenticated' : 'unauthenticated';
   uiState.authBusy = false;
   if (session?.user) {
+    const metadataName = String(session.user.user_metadata?.name || '').trim();
+    if (metadataName && metadataName !== getState().profile?.name) {
+      updateProfile({
+        ...getState().profile,
+        name: metadataName,
+      });
+    }
     uiState.authError = '';
     uiState.authMessage = '';
   }

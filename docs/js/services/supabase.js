@@ -37,13 +37,14 @@ export async function signInWithEmailOtp(email, { redirectPath = '/' } = {}) {
   });
 }
 
-export async function signUpWithEmail(email, password, { redirectPath = '/' } = {}) {
+export async function signUpWithEmail(email, password, { redirectPath = '/', name = '' } = {}) {
   const client = requireSupabase();
   return client.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: getAuthRedirectUrl(redirectPath),
+      data: name ? { name } : undefined,
     },
   });
 }

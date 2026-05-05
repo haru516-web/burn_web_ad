@@ -117,6 +117,7 @@
 }
 
 .auth-field input {
+  width: 100%;
   min-height: 50px;
   border: 1px solid rgba(220, 197, 185, 0.96);
   border-radius: 16px;
@@ -124,6 +125,38 @@
   color: #2f2520;
   padding: 0 14px;
   scroll-margin-block: 120px;
+}
+
+.auth-password-wrap {
+  position: relative;
+  display: block;
+}
+
+.auth-password-wrap input {
+  padding-right: 48px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: rgba(78, 61, 54, 0.68);
+  transform: translateY(-50%);
+}
+
+.auth-password-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.auth-password-toggle.is-visible {
+  color: #2f2520;
+  background: rgba(220, 197, 185, 0.34);
 }
 
 .auth-field input:focus {
