@@ -15,6 +15,7 @@ import '../docs/css/compose.css';
 import '../docs/css/magazine.css';
 import '../docs/css/profile.css';
 import '../docs/css/modal.css';
+import '../docs/css/auth.css';
 import { LegacyShell } from './LegacyShell.jsx';
 
 createRoot(document.getElementById('root')).render(<LegacyShell />);

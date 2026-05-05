@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, addPost, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, addPost, upsertPostCache, upsertPostCacheMany, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -36,9 +36,29 @@ import {
   snapPage8Value,
 } from './templates/page8Layout.js';
 import { cropFileToCirclePngDataUrl, fileToWebpDataUrl } from './utils/image.js';
+import {
+  getCurrentSession,
+  isSupabaseConfigured,
+  onAuthStateChange,
+  signInWithEmailPassword,
+  signUpWithEmail,
+} from './services/supabase.js';
+import {
+  completedPageToLocalPost,
+  listCompletedPages,
+  saveCompletedPage,
+} from './services/completedPages.js';
+import { listPhotoAssets, savePhotoAsset } from './services/photoAssets.js';
+import { backupRecordMemory, restoreRecordMemoryImages } from './utils/recordMemoryBackup.js';
 
 const uiState = {
   screen: 'opening',
+  authStatus: isSupabaseConfigured ? 'loading' : 'unconfigured',
+  authMode: 'login',
+  authUser: null,
+  authMessage: '',
+  authError: '',
+  authBusy: false,
   timelineOverlay: null,
   timelineTab: 'recommended',
   timelinePan: { x: -360, y: -220 },
@@ -462,6 +482,77 @@ function resolveHomeTheme() {
   return 'light';
 }
 
+function escapeHtml(value = '') {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function renderAuthScreen() {
+  const isSignup = uiState.authMode === 'signup';
+  const isLoading = uiState.authStatus === 'loading';
+  const isUnconfigured = uiState.authStatus === 'unconfigured';
+  const title = isUnconfigured ? 'Setup required' : isSignup ? 'Create account' : 'Welcome back';
+  const copy = isUnconfigured
+    ? 'Supabase connection settings are missing.'
+    : isSignup
+      ? 'メール確認後、BURNを一人でも始められます。'
+      : 'メールとパスワードでBURNに入ります。';
+
+  return `
+    <section class="auth-screen">
+      <div class="auth-card">
+        <div class="auth-card__copy">
+          <p class="auth-card__eyebrow">BURN</p>
+          <h1 class="auth-card__title">${title}</h1>
+          <p class="auth-card__lead">${copy}</p>
+        </div>
+
+        ${isUnconfigured ? `
+          <div class="auth-note auth-note--error">
+            <strong>Supabase is not configured</strong>
+            <span>Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.</span>
+          </div>
+        ` : ''}
+
+        ${isLoading ? `
+          <div class="auth-loading">
+            <span></span>
+            <p>セッションを確認しています</p>
+          </div>
+        ` : ''}
+
+        ${!isLoading && !isUnconfigured ? `
+          <div class="auth-tabs" role="tablist" aria-label="Auth mode">
+            <button class="auth-tab ${!isSignup ? 'is-active' : ''}" type="button" data-auth-mode="login">ログイン</button>
+            <button class="auth-tab ${isSignup ? 'is-active' : ''}" type="button" data-auth-mode="signup">新規登録</button>
+          </div>
+
+          <form class="auth-form" data-auth-form>
+            <label class="auth-field">
+              <span>メールアドレス</span>
+              <input type="email" name="email" autocomplete="email" required placeholder="you@example.com" />
+            </label>
+            <label class="auth-field">
+              <span>パスワード</span>
+              <input type="password" name="password" autocomplete="${isSignup ? 'new-password' : 'current-password'}" minlength="6" required placeholder="6文字以上" />
+            </label>
+            <button class="auth-submit" type="submit" ${uiState.authBusy ? 'disabled' : ''}>
+              ${uiState.authBusy ? '送信中' : isSignup ? '登録する' : 'ログイン'}
+            </button>
+          </form>
+        ` : ''}
+
+        ${uiState.authMessage ? `<p class="auth-message">${escapeHtml(uiState.authMessage)}</p>` : ''}
+        ${uiState.authError ? `<p class="auth-message auth-message--error">${escapeHtml(uiState.authError)}</p>` : ''}
+      </div>
+    </section>
+  `;
+}
+
 function getPageHtml() {
   const state = getState();
   switch (uiState.screen) {
@@ -509,6 +600,58 @@ function getActivePost(postId) {
 function isOwnPost(post) {
   if (!post) return false;
   return post.authorName === getState().profile.name;
+}
+
+function buildCompletedEditorSnapshot({
+  pageId,
+  title,
+  imageData,
+  composeData,
+  fixedTags = ['completed'],
+  freeTags = [],
+}) {
+  return {
+    pageId: pageId || null,
+    title: title || 'Untitled',
+    imageData: imageData || '',
+    fixedTags,
+    freeTags,
+    composeData: composeData || {},
+    ...(composeData || {}),
+  };
+}
+
+async function saveCompletedPageToSupabase(input) {
+  const editorSnapshot = buildCompletedEditorSnapshot(input);
+  return saveCompletedPage({
+    pageId: input.pageId,
+    title: input.title,
+    editorSnapshot,
+    finalImageData: input.imageData,
+  });
+}
+
+async function syncCompletedPagesFromSupabase() {
+  try {
+    const pages = await listCompletedPages();
+    const authorName = String(getState().profile?.name || 'you').trim() || 'you';
+    upsertPostCacheMany(pages.map((page) => completedPageToLocalPost(page, authorName)));
+    return true;
+  } catch (error) {
+    console.warn('Failed to load completed pages from Supabase. Using local cache.', error);
+    return false;
+  }
+}
+
+async function syncPhotoAssetsFromSupabase() {
+  try {
+    const memories = await listPhotoAssets();
+    replaceRecordMemories(memories);
+    return true;
+  } catch (error) {
+    console.warn('Failed to load photo assets from Supabase. Using local cache.', error);
+    return false;
+  }
 }
 
 function renderShell() {
@@ -590,6 +733,11 @@ function renderScreen() {
 function render() {
   if (!app) return;
   cleanupComposeBridge();
+  if (uiState.authStatus !== 'authenticated') {
+    app.innerHTML = renderAuthScreen();
+    bindAuthEvents();
+    return;
+  }
   if (uiState.screen === 'opening') {
     app.innerHTML = renderOpening(renderHome(getState(), uiState));
     bindOpeningEvents();
@@ -755,6 +903,10 @@ function openPostDetail(postId) {
 function openPostEdit(postId) {
   const post = getActivePost(postId);
   if (!post || !isOwnPost(post)) return;
+  if (post.composeData?.isLocked || post.composeData?.completedPageId) {
+    openPostDetail(postId);
+    return;
+  }
   uiState.composeReturnState = captureViewState();
   uiState.composeEditingPostId = postId;
   uiState.composeDraftId = null;
@@ -859,20 +1011,34 @@ async function publishComposeDraft(draftId) {
   };
   const imageData = draft.imageData;
   const profileName = String(getState().profile?.name || 'you').trim() || 'you';
-
-  addPost({
-    authorName: profileName,
-    caption: buildComposeCaption(values),
-    imageData,
+  const composeData = {
+    ...values,
     fixedTags: draftSnapshot.fixedTags,
     freeTags: draftSnapshot.freeTags,
-    composeData: {
-      ...values,
+    standardFiles: draftSnapshot.standardFiles,
+  };
+
+  try {
+    const completedPage = await saveCompletedPageToSupabase({
+      pageId: draft.id,
+      title: draft.title || buildComposeCaption(values),
+      imageData,
+      composeData,
       fixedTags: draftSnapshot.fixedTags,
       freeTags: draftSnapshot.freeTags,
-      standardFiles: draftSnapshot.standardFiles,
-    },
-  });
+    });
+    upsertPostCache(completedPageToLocalPost(completedPage, profileName));
+  } catch (error) {
+    console.warn('Failed to save completed page to Supabase. Falling back to localStorage.', error);
+    addPost({
+      authorName: profileName,
+      caption: buildComposeCaption(values),
+      imageData,
+      fixedTags: draftSnapshot.fixedTags,
+      freeTags: draftSnapshot.freeTags,
+      composeData,
+    });
+  }
   deleteDraft(draftId);
   uiState.composeDraftId = null;
   uiState.composeWorkingDraft = null;
@@ -2565,7 +2731,7 @@ async function renderComposeTemplate(values, files, extra = {}) {
     page8Files: extra.page8Files || {},
   });
 
-  return canvas.toDataURL('image/png');
+  return canvas.toDataURL('image/webp', 0.92);
 }
 
 function composeDataUrlToBlob(dataUrl) {
@@ -6948,6 +7114,7 @@ async function applyRecordPhotoFile(file) {
   uiState.recordDraft = {
     ...(uiState.recordDraft || {}),
     imageData,
+    sourceType: 'album',
     time: now.toTimeString().slice(0, 5),
     place: uiState.recordDraft?.place || '',
     memo: uiState.recordDraft?.memo || '',
@@ -7132,7 +7299,7 @@ function drawFilteredImageToCanvas(source, filterId = 'none', frame = uiState.re
   applyRecordCameraPixelFilter(ctx, canvas.width, canvas.height, filterId);
   addRecordCameraSoftness(ctx, canvas.width, canvas.height, filterId);
   const quality = isIxy ? 0.74 : isD200 ? 0.88 : 0.92;
-  return canvas.toDataURL('image/jpeg', quality);
+  return canvas.toDataURL('image/webp', quality);
 }
 
 async function applyRecordAlbumFile(file) {
@@ -7146,6 +7313,7 @@ async function applyRecordAlbumFile(file) {
   uiState.recordDraft = {
     ...(uiState.recordDraft || {}),
     imageData: filteredImageData || imageData,
+    sourceType: 'album',
     filter: 'none',
     frame: uiState.recordDraft?.frame === 'portrait' ? 'portrait' : 'landscape',
     time: uiState.recordDraft?.time || now.toTimeString().slice(0, 5),
@@ -7164,6 +7332,7 @@ function captureRecordCameraPhoto() {
   uiState.recordDraft = {
     ...(uiState.recordDraft || {}),
     imageData,
+    sourceType: 'camera',
     filter: 'none',
     frame: uiState.recordDraft?.frame === 'portrait' ? 'portrait' : 'landscape',
     time: new Date().toTimeString().slice(0, 5),
@@ -7594,37 +7763,49 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
   if (!imageData) return false;
   const profileName = String(getState().profile?.name || 'you').trim() || 'you';
   const title = String(uiState.recordTitle || '').trim() || 'A day to remember';
+  const composeData = {
+    source: 'record',
+    recordMemoryIds: selectedIds.slice(0, 3),
+    recordTemplateId: uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE,
+    recordBackgroundId: uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND,
+    recordPhotoFeather: uiState.recordPhotoFeather !== false,
+    title,
+  };
 
   if (publish) {
-    addPost({
+    let completedPage = null;
+    try {
+      completedPage = await saveCompletedPageToSupabase({
+        pageId: `record_${Date.now()}`,
+        title,
+        imageData,
+        composeData,
+        fixedTags: ['record'],
+        freeTags: [],
+      });
+    } catch (error) {
+      console.warn('Failed to save record page to Supabase. Falling back to localStorage.', error);
+    }
+
+    if (completedPage) {
+      upsertPostCache(completedPageToLocalPost(completedPage, profileName));
+    } else {
+      addPost({
       authorName: profileName,
       caption: '今日の思い出が1ページになりました',
       imageData,
       fixedTags: ['record'],
       freeTags: [],
-      composeData: {
-        source: 'record',
-        recordMemoryIds: selectedIds.slice(0, 3),
-        recordTemplateId: uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE,
-        recordBackgroundId: uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND,
-        recordPhotoFeather: uiState.recordPhotoFeather !== false,
-        title,
-      },
-    });
+      composeData,
+      });
+    }
     uiState.screen = 'timeline';
     uiState.timelineTab = 'recommended';
   } else {
     upsertDraft({
       title,
       imageData,
-      composeData: {
-        source: 'record',
-        recordMemoryIds: selectedIds.slice(0, 3),
-        recordTemplateId: uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE,
-        recordBackgroundId: uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND,
-        recordPhotoFeather: uiState.recordPhotoFeather !== false,
-        title,
-      },
+      composeData,
     });
     uiState.screen = 'profile';
     uiState.profileAuthor = null;
@@ -7746,13 +7927,24 @@ function bindRecordEvents() {
     });
   });
 
-  document.querySelector('[data-record-save]')?.addEventListener('click', () => {
+  document.querySelector('[data-record-save]')?.addEventListener('click', async () => {
     const draft = uiState.recordDraft || {};
     if (!draft.imageData) return;
-    const saved = addRecordMemory({
+    const memoryInput = {
       ...draft,
       place: document.querySelector('[data-record-place]')?.value || draft.place || '',
       memo: document.querySelector('[data-record-memo]')?.value || draft.memo || '',
+      sourceType: draft.sourceType || 'album',
+    };
+    let saved = null;
+    try {
+      saved = addRecordMemory(await savePhotoAsset(memoryInput));
+    } catch (error) {
+      console.warn('Failed to save photo asset to Supabase. Falling back to local cache.', error);
+      saved = addRecordMemory(memoryInput);
+    }
+    backupRecordMemory(saved).catch((error) => {
+      console.warn('Failed to back up record memory image.', error);
     });
     stopRecordCameraStream();
     uiState.recordDraft = null;
@@ -8188,6 +8380,53 @@ function bindPostDetailEvents() {
   });
 }
 
+function bindAuthEvents() {
+  document.querySelectorAll('[data-auth-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.authMode = button.dataset.authMode === 'signup' ? 'signup' : 'login';
+      uiState.authMessage = '';
+      uiState.authError = '';
+      render();
+    });
+  });
+
+  const form = document.querySelector('[data-auth-form]');
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (uiState.authBusy) return;
+    const formData = new FormData(form);
+    const email = String(formData.get('email') || '').trim();
+    const password = String(formData.get('password') || '');
+    if (!email || !password) return;
+
+    uiState.authBusy = true;
+    uiState.authMessage = '';
+    uiState.authError = '';
+    render();
+
+    try {
+      const result = uiState.authMode === 'signup'
+        ? await signUpWithEmail(email, password)
+        : await signInWithEmailPassword(email, password);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (uiState.authMode === 'signup' && !result.data.session) {
+        uiState.authMessage = '確認メールを送信しました。メール内のリンクを開いてからログインしてください。';
+      } else {
+        uiState.authMessage = '';
+      }
+    } catch (error) {
+      uiState.authError = error?.message || '認証に失敗しました。';
+    } finally {
+      uiState.authBusy = false;
+      render();
+    }
+  });
+}
+
 function bindModalEvents() {
   document.querySelectorAll('[data-close-preview]').forEach((element) => {
     element.addEventListener('click', () => {
@@ -8273,6 +8512,73 @@ function bindPageEvents() {
   }
 }
 
+function applyAuthSession(session) {
+  uiState.authUser = session?.user || null;
+  uiState.authStatus = session?.user ? 'authenticated' : 'unauthenticated';
+  uiState.authBusy = false;
+  if (session?.user) {
+    uiState.authError = '';
+    uiState.authMessage = '';
+  }
+}
+
+async function initializeAuth() {
+  if (!isSupabaseConfigured) {
+    uiState.authStatus = 'unconfigured';
+    render();
+    return;
+  }
+
+  try {
+    const { data, error } = await getCurrentSession();
+    if (error) throw error;
+    applyAuthSession(data.session);
+    if (data.session?.user) {
+      await Promise.all([
+        syncCompletedPagesFromSupabase(),
+        syncPhotoAssetsFromSupabase(),
+      ]);
+    }
+  } catch (error) {
+    uiState.authStatus = 'unauthenticated';
+    uiState.authError = error?.message || 'セッション確認に失敗しました。';
+  }
+
+  onAuthStateChange((event, session) => {
+    applyAuthSession(session);
+    if (event === 'SIGNED_OUT') {
+      uiState.screen = 'opening';
+    }
+    if (session?.user) {
+      Promise.all([
+        syncCompletedPagesFromSupabase(),
+        syncPhotoAssetsFromSupabase(),
+      ]).finally(() => render());
+      return;
+    }
+    render();
+  });
+
+  render();
+}
+
+let recordMemoryRestorePromise = null;
+
+function restoreRecordMemoryBackups() {
+  if (recordMemoryRestorePromise) return recordMemoryRestorePromise;
+  recordMemoryRestorePromise = restoreRecordMemoryImages(getState().recordMemories || [])
+    .then(({ restored, memories }) => {
+      if (!restored) return;
+      replaceRecordMemories(memories);
+      render();
+    })
+    .then(() => Promise.all((getState().recordMemories || []).map((memory) => backupRecordMemory(memory))))
+    .catch((error) => {
+      console.warn('Failed to restore record memory images from backup.', error);
+    });
+  return recordMemoryRestorePromise;
+}
+
 export function bootLegacyApp(root = document.getElementById('app')) {
   if (!root) {
     throw new Error('bootLegacyApp requires an app root element.');
@@ -8280,6 +8586,8 @@ export function bootLegacyApp(root = document.getElementById('app')) {
   installViewportStabilityGuards();
   app = root;
   render();
+  restoreRecordMemoryBackups();
+  initializeAuth();
   return { render };
 }
 

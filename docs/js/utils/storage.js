@@ -23,6 +23,7 @@ function reduceStateForQuota(state) {
     posts: Array.isArray(state.posts)
       ? state.posts.map((post) => ({
         ...post,
+        imageData: post?.composeData?.completedPageId ? '' : post.imageData,
         composeData: post?.composeData && typeof post.composeData === 'object'
           ? {
             ...post.composeData,
@@ -34,12 +35,19 @@ function reduceStateForQuota(state) {
     drafts: Array.isArray(state.drafts)
       ? state.drafts.map((draft) => ({
         ...draft,
+        imageData: '',
         composeData: draft?.composeData && typeof draft.composeData === 'object'
           ? {
             ...draft.composeData,
             standardFiles: shrinkComposeStandardFiles(draft.composeData.standardFiles),
           }
           : draft?.composeData ?? null,
+      }))
+      : [],
+    recordMemories: Array.isArray(state.recordMemories)
+      ? state.recordMemories.map((memory) => ({
+        ...memory,
+        imageData: '',
       }))
       : [],
   };
@@ -64,7 +72,7 @@ export function saveState(state) {
 
     try {
       localStorage.setItem(KEY, JSON.stringify(reduceStateForQuota(state)));
-      console.warn('Storage quota exceeded. Saved a reduced compose state without original upload blobs.');
+      console.warn('Storage quota exceeded. Saved reduced state without large image blobs.');
     } catch (retryError) {
       console.error('Failed to persist state after quota reduction.', retryError);
     }

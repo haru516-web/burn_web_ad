@@ -119,6 +119,9 @@ function normalizeRecordMemory(memory) {
       zoom: Math.max(1, Number(memory.pageCrop?.zoom) || 1),
     },
     createdAt: memory.createdAt || new Date().toISOString(),
+    storagePath: memory.storagePath || '',
+    sourceType: memory.sourceType === 'camera' ? 'camera' : 'album',
+    expiresAt: memory.expiresAt || null,
   };
 }
 
@@ -193,7 +196,7 @@ function commit(nextState) {
 export function addPost(post) {
   const next = structuredClone(state);
   next.posts.unshift({
-    id: createId('post'),
+    id: post.id || createId('post'),
     authorName: post.authorName,
     authorIcon: (post.authorName || 'U').trim().slice(0, 1).toUpperCase(),
     authorAvatarData: state.profile.avatarData || '',
@@ -211,6 +214,40 @@ export function addPost(post) {
     updatedAt: null,
     composeData: post.composeData || null,
   });
+  commit(next);
+}
+
+export function upsertPostCache(post) {
+  if (!post?.id) return null;
+  const next = structuredClone(state);
+  const existingIndex = next.posts.findIndex((item) => item.id === post.id);
+  const normalized = normalizePost({
+    ...post,
+    createdAt: post.createdAt || new Date().toISOString(),
+  });
+  if (existingIndex >= 0) {
+    next.posts[existingIndex] = {
+      ...next.posts[existingIndex],
+      ...normalized,
+    };
+  } else {
+    next.posts.unshift(normalized);
+  }
+  commit(next);
+  return normalized;
+}
+
+export function upsertPostCacheMany(posts = []) {
+  posts.forEach((post) => {
+    upsertPostCache(post);
+  });
+}
+
+export function replaceRecordMemories(recordMemories = []) {
+  const next = structuredClone(state);
+  next.recordMemories = Array.isArray(recordMemories)
+    ? recordMemories.map(normalizeRecordMemory)
+    : [];
   commit(next);
 }
 
@@ -244,8 +281,8 @@ export function addRecordMemory(memory) {
   const next = structuredClone(state);
   const normalized = normalizeRecordMemory({
     ...memory,
-    id: createId('memory'),
-    createdAt: new Date().toISOString(),
+    id: memory.id || createId('memory'),
+    createdAt: memory.createdAt || new Date().toISOString(),
   });
   next.recordMemories = [normalized, ...(next.recordMemories || [])];
   commit(next);

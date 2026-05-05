@@ -4,6 +4,9 @@ dist/
 -
 *.log
 *.tsbuildinfo
+.env
+.env.*
+!.env.example
 
 docs/references/pretext-magazine-editor/node_modules/
 docs/references/pretext-magazine-editor/package-lock.json
