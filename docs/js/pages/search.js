@@ -1,4 +1,5 @@
 import { getIcon } from '../components/icons.js';
+import { getPostDateKey } from '../utils/date.js';
 
 export const COUPLE_QUESTIONS = [
   {
@@ -152,7 +153,7 @@ function getEntriesForDate(state, dateString) {
 }
 
 function getPostsForDate(state, dateString) {
-  return (state.posts || []).filter((post) => post.createdAt?.slice(0, 10) === dateString);
+  return (state.posts || []).filter((post) => getPostDateKey(post) === dateString);
 }
 
 export function getCoupleRecommendations(couple = {}) {
@@ -179,7 +180,7 @@ function getQuestionProgress(couple = {}) {
 
 function renderCalendarGrid(state, uiState) {
   const entries = state.couple?.calendarEntries || [];
-  const postDates = new Set((state.posts || []).map((post) => post.createdAt?.slice(0, 10)).filter(Boolean));
+  const postDates = new Set((state.posts || []).map((post) => getPostDateKey(post)).filter(Boolean));
   const entryDates = new Set(entries.map((entry) => entry.date));
   const selectedDate = uiState.selectedCalendarDate || getTodayDateKey();
   const todayDate = getTodayDateKey();
@@ -502,7 +503,7 @@ function renderDateList(state, uiState = {}) {
 
 function renderPageListEntry(post) {
   const title = getPostTitle(post);
-  const dateText = new Date(post.createdAt).toLocaleDateString('ja-JP').replace(/\//g, '.');
+  const dateText = getPostDateKey(post).replace(/-/g, '.');
   return `
     <article class="couple-album-page">
       <button class="couple-album-page__image" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">

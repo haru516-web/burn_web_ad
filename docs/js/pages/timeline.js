@@ -1,4 +1,5 @@
 import { getIcon } from '../components/icons.js';
+import { getPostDateKey } from '../utils/date.js';
 
 function renderBrand() {
   return `
@@ -60,7 +61,7 @@ function getPostTitle(post) {
 
 function getPostsForDate(state = {}, dateString = '') {
   return (state.posts || [])
-    .filter((post) => post.createdAt?.slice(0, 10) === dateString)
+    .filter((post) => getPostDateKey(post) === dateString)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 

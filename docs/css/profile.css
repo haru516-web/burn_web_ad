@@ -250,6 +250,471 @@
   line-height: 1.75;
 }
 
+.page--futari-dashboard {
+  background:
+    radial-gradient(circle at 50% 2%, rgba(230, 208, 195, 0.18), transparent 34%),
+    linear-gradient(180deg, #fffdf9 0%, #fbf6ef 100%);
+}
+
+.futari-dashboard-shell {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 430px);
+  min-height: 100%;
+  margin: 0 auto;
+  padding:
+    max(22px, calc(env(safe-area-inset-top) + 16px))
+    22px
+    calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 22px);
+}
+
+.futari-dashboard-hero {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  text-align: center;
+}
+
+.futari-dashboard-hero .couple-brand__word {
+  font-size: 40px;
+  letter-spacing: 0.2em;
+}
+
+.futari-dashboard-hero .couple-brand__line {
+  margin-top: 8px;
+}
+
+.futari-dashboard-hero h1 {
+  margin: 26px 0 0;
+  color: #2f2520;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.futari-dashboard-hero p:not(.couple-brand__word) {
+  margin: 0;
+  color: #74675f;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.futari-dashboard-bell {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(222, 201, 188, 0.88);
+  border-radius: 999px;
+  color: #8c7569;
+  background: rgba(255, 253, 249, 0.78);
+}
+
+.futari-dashboard-bell svg {
+  width: 24px;
+  height: 24px;
+}
+
+.futari-dashboard-bell span {
+  position: absolute;
+  top: 14px;
+  right: 13px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d6607d;
+}
+
+.futari-dashboard-top,
+.futari-dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.futari-dashboard-card {
+  position: relative;
+  min-width: 0;
+  border: 1px solid rgba(226, 211, 199, 0.92);
+  background: rgba(255, 253, 249, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 16px 38px rgba(93, 68, 54, 0.08);
+}
+
+.futari-dashboard-card p,
+.futari-dashboard-card h2,
+.futari-dashboard-card strong {
+  margin: 0;
+}
+
+.futari-dashboard-card--anniversary {
+  min-height: 86px;
+  display: grid;
+  align-content: center;
+  padding: 15px 18px;
+  border-radius: 18px;
+}
+
+.futari-dashboard-card--anniversary p,
+.futari-dashboard-card--days p,
+.futari-dashboard-card--pages p,
+.futari-dashboard-card--dates p {
+  color: #40322c;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.futari-dashboard-card--anniversary strong,
+.futari-dashboard-card--days strong,
+.futari-dashboard-card--pages strong,
+.futari-dashboard-card--dates strong {
+  color: #261d19;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+
+.futari-dashboard-card--anniversary i {
+  position: static;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 6px;
+  color: #d5a79b;
+  font-family: serif;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+}
+
+.futari-dashboard-card--anniversary i::before,
+.futari-dashboard-card--anniversary i::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  margin: 0 7px;
+  background: rgba(210, 158, 146, 0.72);
+}
+
+.futari-dashboard-card--days {
+  min-height: 86px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding: 15px 18px;
+  border-radius: 999px;
+}
+
+.futari-dashboard-card--days strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 36px;
+  letter-spacing: 0;
+}
+
+.futari-dashboard-card--days strong span,
+.futari-dashboard-card--dates strong span {
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 20px;
+}
+
+.futari-dashboard-card--days i {
+  margin-top: 0;
+  color: #cc8584;
+  font-style: normal;
+  font-size: 14px;
+}
+
+.futari-dashboard-card--pages,
+.futari-dashboard-card--dates {
+  min-height: 86px;
+  display: grid;
+  align-items: center;
+  gap: 16px;
+  padding: 15px 18px;
+}
+
+.futari-dashboard-card--pages {
+  grid-template-columns: 54px 1fr;
+  border-radius: 0;
+  clip-path: polygon(8% 0, 92% 0, 92% 9%, 100% 9%, 100% 91%, 92% 91%, 92% 100%, 8% 100%, 8% 91%, 0 91%, 0 9%, 8% 9%);
+}
+
+.futari-dashboard-card--dates {
+  grid-template-columns: 1fr 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 253, 249, 0.9), rgba(228, 183, 183, 0.56));
+}
+
+.futari-dashboard-card--pages strong,
+.futari-dashboard-card--dates strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 36px;
+  letter-spacing: 0.02em;
+}
+
+.futari-dashboard-soft-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  color: #9b8073;
+  background: rgba(232, 213, 207, 0.64);
+}
+
+.futari-dashboard-soft-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.futari-dashboard-card--dates .futari-dashboard-soft-icon {
+  color: #fff;
+  background: rgba(203, 134, 136, 0.64);
+}
+
+.futari-dashboard-todo {
+  display: grid;
+  gap: 14px;
+  padding: 20px 16px 18px;
+  border-radius: 18px;
+}
+
+.futari-dashboard-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.futari-dashboard-section-head h2 {
+  color: #332722;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.futari-dashboard-section-head button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #b47b72;
+  background: rgba(244, 235, 229, 0.86);
+}
+
+.futari-dashboard-section-head svg {
+  width: 18px;
+  height: 18px;
+}
+
+.futari-dashboard-todo__list {
+  display: grid;
+  gap: 8px;
+}
+
+.futari-dashboard-todo__row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(226, 211, 199, 0.9);
+  border-radius: 999px;
+  color: #4b3b34;
+  background: rgba(255, 253, 249, 0.62);
+  text-align: left;
+}
+
+.futari-dashboard-todo__check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(198, 161, 146, 0.86);
+  border-radius: 50%;
+  color: #c78382;
+}
+
+.futari-dashboard-todo__check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.futari-dashboard-todo__title {
+  overflow: hidden;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.futari-dashboard-todo__row.is-done .futari-dashboard-todo__title {
+  color: #a39188;
+  text-decoration: line-through;
+}
+
+.futari-dashboard-todo__icon {
+  color: #9b8073;
+}
+
+.futari-dashboard-todo__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.futari-dashboard-todo__empty {
+  padding: 10px 0;
+  color: #8b7a70;
+  font-size: 13px;
+  text-align: center;
+}
+
+.futari-dashboard-add {
+  min-height: 42px;
+  border: 1px dashed rgba(210, 188, 176, 0.9);
+  border-radius: 999px;
+  color: #a07e71;
+  background: rgba(255, 253, 249, 0.48);
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.futari-dashboard-add span {
+  margin-right: 12px;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.futari-dashboard-plus {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 20px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.futari-dashboard-plus::after {
+  content: "";
+  position: absolute;
+  right: -38px;
+  bottom: -52px;
+  width: 188px;
+  height: 128px;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, transparent 20%, rgba(218, 180, 164, 0.28) 21% 28%, transparent 29% 36%, rgba(218, 180, 164, 0.2) 37% 44%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(221, 194, 184, 0.45), transparent 70%);
+  transform: rotate(-24deg);
+}
+
+.futari-dashboard-plus h2 {
+  color: #201916;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.futari-dashboard-plus h2 span {
+  color: #7d514c;
+  font-size: 18px;
+}
+
+.futari-dashboard-plus p,
+.futari-dashboard-plus small {
+  display: block;
+  margin: 10px 0 0;
+  color: #756359;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.futari-dashboard-plus small {
+  margin-top: 6px;
+  color: #9a867d;
+  font-size: 12px;
+}
+
+.futari-dashboard-plus button {
+  position: relative;
+  z-index: 1;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: #fff;
+  background: #c98592;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.futari-dashboard-plus button svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 390px) {
+  .futari-dashboard-shell {
+    gap: 16px;
+    padding-inline: 18px;
+  }
+
+  .futari-dashboard-hero .couple-brand__word {
+    font-size: 34px;
+  }
+
+  .futari-dashboard-top,
+  .futari-dashboard-stats {
+    gap: 10px;
+  }
+
+  .futari-dashboard-card--anniversary,
+  .futari-dashboard-card--days {
+    min-height: 86px;
+  }
+
+  .futari-dashboard-card--anniversary strong,
+  .futari-dashboard-card--days strong {
+    font-size: 34px;
+  }
+
+  .futari-dashboard-plus {
+    grid-template-columns: 1fr;
+  }
+
+  .futari-dashboard-plus button {
+    justify-self: start;
+  }
+}
+
 .profile-journal-shell {
   display: grid;
   gap: 18px;

@@ -210,7 +210,7 @@ export function addPost(post) {
     impressions: 0,
     liked: false,
     saved: false,
-    createdAt: new Date().toISOString(),
+    createdAt: post.createdAt || new Date().toISOString(),
     updatedAt: null,
     composeData: post.composeData || null,
   });

@@ -106,6 +106,7 @@ const uiState = {
   recordBackgroundId: DEFAULT_RECORD_BACKGROUND,
   recordPhotoFeather: true,
   recordTitle: '',
+  recordPostingOverlay: null,
   recordDraft: null,
   recordSelectedIds: [],
   recordEditingId: null,
@@ -624,6 +625,7 @@ function buildCompletedEditorSnapshot({
   composeData,
   fixedTags = ['completed'],
   freeTags = [],
+  createdAt = '',
 }) {
   return {
     pageId: pageId || null,
@@ -631,6 +633,7 @@ function buildCompletedEditorSnapshot({
     imageData: imageData || '',
     fixedTags,
     freeTags,
+    createdAt,
     composeData: composeData || {},
     ...(composeData || {}),
   };
@@ -724,8 +727,32 @@ function renderModals() {
   const commentPost = uiState.commentPostId ? getActivePost(uiState.commentPostId) : null;
   modalRoot.innerHTML = `
     ${renderCommentsModal(commentPost)}
+    ${renderRecordPostingOverlay()}
   `;
   bindModalEvents();
+}
+
+function renderRecordPostingOverlay() {
+  const overlay = uiState.recordPostingOverlay;
+  if (!overlay?.imageData) return '';
+  const progress = Math.max(0, Math.min(100, Number(overlay.progress) || 0));
+  const isComplete = progress >= 100 || overlay.complete;
+  return `
+    <div class="record-posting-overlay" role="status" aria-live="polite">
+      <div class="record-posting-overlay__inner">
+        <p class="record-posting-overlay__kicker">${isComplete ? 'done' : 'posting'}</p>
+        <h2>${isComplete ? 'ページ完成！' : '投稿中...'}</h2>
+        <div class="record-posting-overlay__page" style="--record-post-progress:${progress}%">
+          <img class="record-posting-overlay__page-mono" src="${overlay.imageData}" alt="" />
+          <img class="record-posting-overlay__page-color" src="${overlay.imageData}" alt="" />
+        </div>
+        <div class="record-posting-overlay__bar" aria-hidden="true">
+          <span style="width:${progress}%"></span>
+        </div>
+        <p>${isComplete ? 'ふたりのページを保存しました' : 'ページに色をのせています'}</p>
+      </div>
+    </div>
+  `;
 }
 
 function renderScreen() {
@@ -822,6 +849,7 @@ function navigate(screen) {
     uiState.recordBackgroundId = DEFAULT_RECORD_BACKGROUND;
     uiState.recordPhotoFeather = true;
     uiState.recordTitle = '';
+    uiState.recordPostingOverlay = null;
     uiState.recordDraft = null;
     uiState.recordSelectedIds = [];
     uiState.recordEditingId = null;
@@ -7783,21 +7811,53 @@ async function saveRecordPhotoToDevice() {
   return true;
 }
 
-async function saveRecordGeneratedPage({ publish = false } = {}) {
+async function saveRecordGeneratedPage({
+  publish = false,
+  localOnly = false,
+  imageDataOverride = '',
+  deferRender = false,
+} = {}) {
   const selectedIds = uiState.recordSelectedIds || [];
   if (selectedIds.length !== 3) return false;
-  const imageData = await captureRecordPageImage();
+  const imageData = imageDataOverride || await captureRecordPageImage();
   if (!imageData) return false;
   const profileName = String(getState().profile?.name || 'you').trim() || 'you';
   const title = String(uiState.recordTitle || '').trim() || 'A day to remember';
+  const recordDate = uiState.recordDate || getTodayDateKey();
+  const recordCreatedAt = `${recordDate}T12:00:00`;
   const composeData = {
     source: 'record',
+    recordDate,
     recordMemoryIds: selectedIds.slice(0, 3),
     recordTemplateId: uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE,
     recordBackgroundId: uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND,
     recordPhotoFeather: uiState.recordPhotoFeather !== false,
+    createdAt: recordCreatedAt,
     title,
   };
+
+  if (localOnly) {
+    upsertPostCache({
+      id: `record_local_${recordCreatedAt.slice(0, 10)}_${selectedIds.slice(0, 3).join('_')}`,
+      authorName: profileName,
+      authorIcon: profileName.slice(0, 1).toUpperCase(),
+      authorAvatarData: getState().profile?.avatarData || '',
+      caption: title,
+      imageData,
+      fixedTags: ['record'],
+      freeTags: [],
+      likes: 0,
+      saves: 0,
+      comments: [],
+      impressions: 0,
+      liked: false,
+      saved: false,
+      createdAt: recordCreatedAt,
+      updatedAt: new Date().toISOString(),
+      composeData,
+    });
+    return true;
+  }
 
   if (publish) {
     let completedPage = null;
@@ -7809,6 +7869,7 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
         composeData,
         fixedTags: ['record'],
         freeTags: [],
+        createdAt: recordCreatedAt,
       });
     } catch (error) {
       console.warn('Failed to save record page to Supabase. Falling back to localStorage.', error);
@@ -7823,6 +7884,7 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
       imageData,
       fixedTags: ['record'],
       freeTags: [],
+      createdAt: recordCreatedAt,
       composeData,
       });
     }
@@ -7847,6 +7909,68 @@ async function saveRecordGeneratedPage({ publish = false } = {}) {
   uiState.recordBackgroundId = DEFAULT_RECORD_BACKGROUND;
   uiState.recordPhotoFeather = true;
   uiState.recordTitle = '';
+  if (!deferRender) render();
+  return true;
+}
+
+function setRecordPostingProgress(progress, complete = false) {
+  if (!uiState.recordPostingOverlay) return;
+  uiState.recordPostingOverlay = {
+    ...uiState.recordPostingOverlay,
+    progress: Math.max(0, Math.min(100, progress)),
+    complete,
+  };
+  renderModals();
+}
+
+function animateRecordPostingProgress() {
+  const startedAt = performance.now();
+  const tick = (now) => {
+    if (!uiState.recordPostingOverlay || uiState.recordPostingOverlay.complete) return;
+    const elapsed = now - startedAt;
+    const progress = Math.min(92, 12 + (1 - Math.exp(-elapsed / 1800)) * 80);
+    setRecordPostingProgress(progress);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function postRecordGeneratedPageWithOverlay() {
+  if (uiState.recordPostingOverlay) return false;
+  const selectedIds = uiState.recordSelectedIds || [];
+  if (selectedIds.length !== 3) return false;
+  const imageData = await captureRecordPageImage();
+  if (!imageData) return false;
+
+  uiState.recordPostingOverlay = {
+    imageData,
+    progress: 8,
+    complete: false,
+  };
+  renderModals();
+  animateRecordPostingProgress();
+
+  const posted = await saveRecordGeneratedPage({
+    publish: true,
+    imageDataOverride: imageData,
+    deferRender: true,
+  });
+
+  if (!posted) {
+    uiState.recordPostingOverlay = null;
+    renderModals();
+    return false;
+  }
+
+  setRecordPostingProgress(100, true);
+  await wait(900);
+  uiState.recordPostingOverlay = null;
   render();
   return true;
 }
@@ -8114,6 +8238,7 @@ function bindRecordEvents() {
       button.textContent = previousText || '保存する';
       return;
     }
+    await saveRecordGeneratedPage({ localOnly: true });
     button.disabled = false;
     button.textContent = previousText || '保存する';
   });
@@ -8123,7 +8248,7 @@ function bindRecordEvents() {
     const previousText = button.textContent;
     button.disabled = true;
     button.textContent = '投稿中';
-    const posted = await saveRecordGeneratedPage({ publish: true });
+    const posted = await postRecordGeneratedPageWithOverlay();
     if (!posted) {
       button.disabled = false;
       button.textContent = previousText || '投稿する';
@@ -8208,6 +8333,22 @@ function bindProfileEvents() {
       uiState.todoInputOpen = false;
       uiState.screen = 'search';
       render();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-open-todo-list]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.coupleView = 'todoList';
+      uiState.todoInputOpen = true;
+      uiState.screen = 'search';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-toggle-todo]').forEach((button) => {
+    button.addEventListener('click', () => {
+      toggleCoupleTodo(button.dataset.profileToggleTodo);
+      renderScreen();
     });
   });
 

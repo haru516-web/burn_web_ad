@@ -195,7 +195,7 @@ export function completedPageToLocalPost(page, authorName = 'you') {
     impressions: 0,
     liked: false,
     saved: false,
-    createdAt: page.completed_at || page.created_at || new Date().toISOString(),
+    createdAt: snapshot.createdAt || snapshot.composeData?.createdAt || page.completed_at || page.created_at || new Date().toISOString(),
     updatedAt: page.updated_at || null,
     composeData: {
       ...(snapshot.composeData || snapshot),

@@ -1,11 +1,75 @@
 import { getIcon } from '../components/icons.js';
 
-function daysUntil(dateString) {
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getDateAtStart(dateString) {
   const target = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  target.setHours(0, 0, 0, 0);
+  return target;
+}
+
+function daysSince(dateString) {
+  const target = getDateAtStart(dateString);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (Number.isNaN(target.getTime())) return 0;
-  return Math.max(0, Math.ceil((target - today) / 86400000));
+  if (!target) return 0;
+  return Math.max(0, Math.floor((today - target) / 86400000));
+}
+
+function formatAnniversary(dateString) {
+  return String(dateString || '2025-05-15').replace(/-/g, '.');
+}
+
+function renderCalendarIcon() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4.5" y="5.8" width="15" height="13.2" rx="2.2"/>
+      <path d="M8.2 4.2v3.2M15.8 4.2v3.2M4.5 9.4h15"/>
+      <path d="M8 12.4h.1M12 12.4h.1M16 12.4h.1M8 15.6h.1M12 15.6h.1M16 15.6h.1"/>
+    </svg>
+  `;
+}
+
+function renderTodoIcon(index) {
+  const icons = [
+    '<path d="M4.8 15.2c1.8 1.4 3.5 1.4 5.2 0 1.8-1.4 3.5-1.4 5.2 0 1.6 1.3 3.2 1.4 4.8.2"/><path d="M6.5 11.3c1.2.8 2.5.8 3.7 0 1.3-.9 2.5-.9 3.8 0 1.2.8 2.4.8 3.6.1"/>',
+    '<path d="M7.2 4.8v6.5M10 4.8v6.5M8.6 11.3v8"/><path d="M15.8 4.8v14.5"/><path d="M15.8 4.8c2.2 1.6 2.8 4.8 0 7.1"/>',
+    '<rect x="6.3" y="8.2" width="11.4" height="9.8" rx="1.6"/><path d="M9.2 8.2V6.7c0-1 .8-1.8 1.8-1.8h2c1 0 1.8.8 1.8 1.8v1.5"/><path d="M6.3 12.2h11.4"/>',
+  ];
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round">
+      ${icons[index % icons.length]}
+    </svg>
+  `;
+}
+
+function renderTodoRows(todos) {
+  const visibleTodos = todos
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 2);
+  if (!visibleTodos.length) {
+    return '<p class="futari-dashboard-todo__empty">&#12420;&#12426;&#12383;&#12356;&#12371;&#12392;&#12434;&#36861;&#21152;&#12375;&#12390;&#12367;&#12384;&#12373;&#12356;</p>';
+  }
+
+  return visibleTodos.map((todo, index) => {
+    const title = todo.title ? escapeHtml(todo.title) : '&#12420;&#12426;&#12383;&#12356;&#12371;&#12392;';
+    return `
+    <button class="futari-dashboard-todo__row ${todo.done ? 'is-done' : ''}" type="button" data-profile-toggle-todo="${escapeHtml(todo.id)}">
+      <span class="futari-dashboard-todo__check" aria-hidden="true">${todo.done ? getIcon('check') : ''}</span>
+      <span class="futari-dashboard-todo__title">${title}</span>
+      <span class="futari-dashboard-todo__icon">${renderTodoIcon(index)}</span>
+    </button>
+  `;
+  }).join('');
 }
 
 export function renderProfile(state, uiState = {}) {
@@ -13,46 +77,80 @@ export function renderProfile(state, uiState = {}) {
   const anniversaryDate = state.couple?.anniversaryDate || '2025-05-15';
   const partnerA = state.profile?.name || 'You';
   const partnerB = state.couple?.partnerBName || 'Partner';
+  const totalDates = (state.couple?.calendarEntries || []).length;
+  const todos = state.couple?.todos || [];
 
   return `
-    <section class="page page--profile page--futari">
-      <div class="futari-shell">
-        <header class="futari-hero">
+    <section class="page page--profile page--futari page--futari-dashboard">
+      <div class="futari-dashboard-shell">
+        <header class="futari-dashboard-hero">
+          <button class="futari-dashboard-bell" type="button" aria-label="notifications">
+            ${getIcon('bell')}
+            <span></span>
+          </button>
           <p class="couple-brand__word">BURN</p>
           <div class="couple-brand__line" aria-hidden="true"><span></span><span></span></div>
-          <h1>ふたり</h1>
-          <p>${partnerA} と ${partnerB} の予定と記録</p>
+          <h1>&#12405;&#12383;&#12426;</h1>
+          <p>${escapeHtml(partnerA)}&#12392;${escapeHtml(partnerB)}&#12398;&#20104;&#23450;&#12392;&#35352;&#37682;</p>
         </header>
 
-        <section class="futari-stats couple-card">
-          <div>
-            <span>記念日</span>
-            <strong>${anniversaryDate.replace(/-/g, '.')}</strong>
-          </div>
-          <div>
-            <span>記念日まで</span>
-            <strong>${daysUntil(anniversaryDate)}日</strong>
-          </div>
-          <div>
-            <span>総ページ</span>
-            <strong>${posts.length}</strong>
-          </div>
+        <section class="futari-dashboard-top">
+          <article class="futari-dashboard-card futari-dashboard-card--anniversary">
+            <div>
+              <p>&#35352;&#24565;&#26085;</p>
+              <strong>${escapeHtml(formatAnniversary(anniversaryDate))}</strong>
+            </div>
+            <i aria-hidden="true">&#9825;</i>
+          </article>
+
+          <article class="futari-dashboard-card futari-dashboard-card--days">
+            <p>&#20184;&#12365;&#21512;&#12387;&#12390;&#12363;&#12425;</p>
+            <strong>${daysSince(anniversaryDate)} <span>&#26085;</span></strong>
+            <i aria-hidden="true">&#9829;</i>
+          </article>
         </section>
 
-        <section class="futari-section">
-          <button class="futari-date-list-link" type="button" data-open-todo-list>
-            <span>やりたいことリスト</span>
-            ${getIcon('chevronRight')}
+        <section class="futari-dashboard-stats">
+          <article class="futari-dashboard-card futari-dashboard-card--pages">
+            <span class="futari-dashboard-soft-icon">${getIcon('bookOpen')}</span>
+            <div>
+              <p>&#32207;&#12506;&#12540;&#12472;</p>
+              <strong>${posts.length}</strong>
+            </div>
+          </article>
+          <article class="futari-dashboard-card futari-dashboard-card--dates">
+            <div>
+              <p>&#32207;&#12487;&#12540;&#12488;&#22238;&#25968;</p>
+              <strong>${totalDates}<span>&#22238;</span></strong>
+            </div>
+            <span class="futari-dashboard-soft-icon">${renderCalendarIcon()}</span>
+          </article>
+        </section>
+
+        <section class="futari-dashboard-todo futari-dashboard-card">
+          <div class="futari-dashboard-section-head">
+            <h2>&#12420;&#12426;&#12383;&#12356;&#12371;&#12392;&#12522;&#12473;&#12488;</h2>
+            <button type="button" data-open-todo-list aria-label="todo list">${getIcon('chevronRight')}</button>
+          </div>
+          <div class="futari-dashboard-todo__list">
+            ${renderTodoRows(todos)}
+          </div>
+          <button class="futari-dashboard-add" type="button" data-profile-open-todo-list>
+            <span>+</span>
+            &#36861;&#21152;&#12377;&#12427;
           </button>
         </section>
 
-        <section class="futari-invite couple-card">
+        <section class="futari-dashboard-plus futari-dashboard-card">
           <div>
-            <p class="couple-kicker">招待</p>
-            <h2>相手を追加</h2>
-            <p>認証と招待リンクはMVPでは仮UIです。後でSupabaseなどに接続できます。</p>
+            <h2>BURN Plus <span>&#10022;</span></h2>
+            <p>&#12486;&#12531;&#12503;&#12524;&#35299;&#25918;&#12539;&#24605;&#12356;&#20986;&#20445;&#23384;&#12539;&#29305;&#21029;&#12487;&#12470;&#12452;&#12531;</p>
+            <small>&#12405;&#12383;&#12426;&#12398;&#26178;&#38291;&#12434;&#12289;&#12418;&#12387;&#12392;&#29305;&#21029;&#12395;&#12290;</small>
           </div>
-          <button type="button">招待リンクを作る</button>
+          <button type="button">
+            &#12503;&#12521;&#12531;&#12434;&#35211;&#12427;
+            ${getIcon('chevronRight')}
+          </button>
         </section>
       </div>
     </section>

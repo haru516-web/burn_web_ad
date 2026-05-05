@@ -6,6 +6,32 @@ export function formatDate(dateString) {
   return `${year}.${month}.${day}`;
 }
 
+export function getLocalDateKey(dateValue = '') {
+  const rawValue = String(dateValue || '');
+  const dateKeyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateKeyMatch) {
+    return `${dateKeyMatch[1]}-${dateKeyMatch[2]}-${dateKeyMatch[3]}`;
+  }
+
+  const date = dateValue ? new Date(dateValue) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getPostDateKey(post = {}) {
+  const composeData = post.composeData || {};
+  return getLocalDateKey(
+    composeData.recordDate
+      || composeData.date
+      || composeData.createdAt
+      || post.recordDate
+      || post.createdAt,
+  );
+}
+
 export function formatDateTime(dateString) {
   const date = new Date(dateString);
   const year = date.getFullYear();

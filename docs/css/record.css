@@ -1802,6 +1802,100 @@
   align-items: center;
 }
 
+.record-posting-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 244, 239, 0.96), rgba(250, 245, 239, 0.88) 44%, rgba(38, 31, 28, 0.42));
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+}
+
+.record-posting-overlay__inner {
+  display: grid;
+  justify-items: center;
+  width: min(100%, 430px);
+  max-height: min(92vh, 780px);
+  padding: 28px 20px 24px;
+  border: 1px solid rgba(211, 177, 165, 0.72);
+  border-radius: 28px;
+  background: rgba(255, 252, 248, 0.92);
+  box-shadow: 0 28px 74px rgba(75, 56, 49, 0.22);
+  text-align: center;
+}
+
+.record-posting-overlay__kicker {
+  margin: 0;
+  color: #bf7f87;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.record-posting-overlay h2 {
+  margin: 6px 0 18px;
+  color: #3c302b;
+  font-size: clamp(1.65rem, 7vw, 2.3rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.record-posting-overlay__page {
+  position: relative;
+  width: min(74vw, 290px);
+  aspect-ratio: 1414 / 2000;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 16px 44px rgba(65, 48, 43, 0.24);
+}
+
+.record-posting-overlay__page img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.record-posting-overlay__page-mono {
+  filter: grayscale(1) contrast(0.96) brightness(1.04);
+}
+
+.record-posting-overlay__page-color {
+  clip-path: inset(calc(100% - var(--record-post-progress, 0%)) 0 0 0);
+  transition: clip-path 420ms ease;
+}
+
+.record-posting-overlay__bar {
+  width: min(74vw, 290px);
+  height: 8px;
+  margin-top: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(215, 186, 176, 0.38);
+}
+
+.record-posting-overlay__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d49ca4, #c78690, #e0b9aa);
+  transition: width 420ms ease;
+}
+
+.record-posting-overlay__inner > p:last-child {
+  margin: 12px 0 0;
+  color: #8b7167;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 560px) {
   .record-page--home {
     padding-inline: 30px;
