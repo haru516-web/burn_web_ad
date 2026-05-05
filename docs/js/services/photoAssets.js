@@ -112,7 +112,7 @@ export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 
     .insert({
       id: assetId,
       user_id: user.id,
-      memory_space_id: memorySpaceId,
+      space_id: memorySpaceId,
       source_type: sourceType === 'camera' ? 'camera' : 'album',
       storage_path: storagePath,
       thumbnail_path: thumbnailPath,
@@ -138,7 +138,7 @@ export async function listPhotoAssets() {
   const { data, error } = await client
     .from('photo_assets')
     .select('*')
-    .eq('memory_space_id', memorySpaceId)
+    .eq('space_id', memorySpaceId)
     .is('deleted_at', null)
     .order('captured_at', { ascending: false });
   if (error) throw error;

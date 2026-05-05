@@ -64,6 +64,7 @@ alter table public.completed_pages
 create table if not exists public.photo_assets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
+  space_id uuid references public.memory_spaces(id) on delete set null,
   memory_space_id uuid references public.memory_spaces(id) on delete set null,
   source_type text not null check (source_type in ('camera', 'album')),
   storage_path text not null,
@@ -76,6 +77,37 @@ create table if not exists public.photo_assets (
   is_protected_by_plan boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table public.photo_assets
+  add column if not exists space_id uuid references public.memory_spaces(id) on delete set null,
+  add column if not exists memory_space_id uuid references public.memory_spaces(id) on delete set null,
+  add column if not exists thumbnail_path text,
+  add column if not exists expires_at timestamptz,
+  add column if not exists retention_days integer not null default 3,
+  add column if not exists deleted_at timestamptz;
+
+update public.photo_assets
+set space_id = coalesce(space_id, memory_space_id),
+    memory_space_id = coalesce(memory_space_id, space_id)
+where space_id is null
+   or memory_space_id is null;
+
+create or replace function public.sync_photo_asset_space_ids()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.space_id := coalesce(new.space_id, new.memory_space_id);
+  new.memory_space_id := coalesce(new.memory_space_id, new.space_id);
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_photo_asset_space_ids on public.photo_assets;
+create trigger sync_photo_asset_space_ids
+before insert or update on public.photo_assets
+for each row
+execute function public.sync_photo_asset_space_ids();
 
 create table if not exists public.page_text_layers (
   id uuid primary key default gen_random_uuid(),
@@ -228,7 +260,7 @@ using (
   user_id = auth.uid()
   or exists (
     select 1 from public.space_members sm
-    where sm.space_id = photo_assets.memory_space_id
+    where sm.space_id = coalesce(photo_assets.space_id, photo_assets.memory_space_id)
       and sm.user_id = auth.uid()
   )
 );
@@ -241,7 +273,7 @@ with check (
   user_id = auth.uid()
   and exists (
     select 1 from public.space_members sm
-    where sm.space_id = photo_assets.memory_space_id
+    where sm.space_id = coalesce(photo_assets.space_id, photo_assets.memory_space_id)
       and sm.user_id = auth.uid()
   )
 );
