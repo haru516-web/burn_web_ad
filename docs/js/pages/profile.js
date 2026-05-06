@@ -74,8 +74,6 @@ function renderProfileBook(profile = {}, isOpen = false) {
 export function renderProfile(state, uiState = {}) {
   const posts = (state.posts || []).slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const anniversaryDate = state.couple?.anniversaryDate || '2025-05-15';
-  const partnerA = state.profile?.name || 'You';
-  const partnerB = state.couple?.partnerBName || 'Partner';
   const totalDates = (state.couple?.calendarEntries || []).length;
   const todos = state.couple?.todos || [];
 
@@ -89,8 +87,6 @@ export function renderProfile(state, uiState = {}) {
           </button>
           <p class="couple-brand__word">BURN</p>
           <div class="couple-brand__line" aria-hidden="true"><span></span><span></span></div>
-          <h1>&#12405;&#12383;&#12426;</h1>
-          <p>${escapeHtml(partnerA)}&#12392;${escapeHtml(partnerB)}&#12398;&#20104;&#23450;&#12392;&#35352;&#37682;</p>
         </header>
 
         <section class="futari-dashboard-top">
