@@ -59,15 +59,186 @@ function renderTodoRows(todos) {
 }
 
 function renderProfileBook(profile = {}, isOpen = false) {
-  const bio = escapeHtml(profile.bio || '');
+  const name = String(profile.name || 'you').trim() || 'you';
   return `
     <section class="futari-dashboard-profile-book futari-dashboard-card">
       <button class="futari-dashboard-profile-book__button" type="button" data-profile-book-open>
         <img src="./image/profile_sheets/profile_sheet1.png" alt="" />
-        <strong>&#12503;&#12525;&#12501;&#12451;&#12540;&#12523;&#24115;</strong>
-        <small>${bio || '&#33258;&#20998;&#12398;&#12371;&#12392;&#12434;&#20837;&#21147;'}</small>
+        <strong>${escapeHtml(name)}の記録</strong>
       </button>
     </section>
+  `;
+}
+
+function renderInviteLinkCard(invite = {}) {
+  const hasUrl = Boolean(invite.url);
+  const status = invite.error || invite.message || '';
+  return `
+    <section class="futari-dashboard-invite futari-dashboard-card">
+      <div class="futari-dashboard-invite__copy">
+        <p>Invitation</p>
+        <h2>相手を招待</h2>
+        <small>リンクを送ると、ログイン後にふたりのスペースへ参加できます。</small>
+      </div>
+      <button class="futari-dashboard-invite__button" type="button" data-create-invite-link ${invite.busy ? 'disabled' : ''}>
+        ${invite.busy ? '発行中' : '招待リンクを発行'}
+      </button>
+      ${hasUrl ? `
+        <div class="futari-dashboard-invite__result">
+          <input type="text" readonly value="${escapeHtml(invite.url)}" data-invite-link-output aria-label="招待リンク" />
+          <button type="button" data-copy-invite-link aria-label="招待リンクをコピー">
+            ${getIcon('copy')}
+          </button>
+        </div>
+      ` : ''}
+      ${status ? `<p class="futari-dashboard-invite__status ${invite.error ? 'is-error' : ''}">${escapeHtml(status)}</p>` : ''}
+    </section>
+  `;
+}
+
+function maskPassword() {
+  return '********';
+}
+
+function renderSettingsList() {
+  const items = [
+    ['account', 'アカウント情報'],
+    ['partner', '相手'],
+    ['logout', 'ログアウト'],
+    ['delete', 'アカウント削除'],
+  ];
+  return `
+    <section class="futari-settings-panel futari-dashboard-card">
+      <div class="futari-settings-panel__head">
+        <button type="button" data-profile-settings-close aria-label="戻る">${getIcon('arrowLeft')}</button>
+        <h1>設定</h1>
+      </div>
+      <div class="futari-settings-list">
+        ${items.map(([key, label]) => `
+          <button class="futari-settings-list__item ${key === 'delete' ? 'is-danger' : ''}" type="button" data-profile-settings-view="${key}">
+            <span>${label}</span>
+            ${getIcon('chevronRight')}
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderAccountSettings(state = {}, uiState = {}) {
+  const profile = state.profile || {};
+  const couple = state.couple || {};
+  const email = uiState.authUser?.email || '';
+  return `
+    <section class="futari-settings-panel futari-dashboard-card">
+      <div class="futari-settings-panel__head">
+        <button type="button" data-profile-settings-back aria-label="戻る">${getIcon('arrowLeft')}</button>
+        <h1>アカウント情報</h1>
+      </div>
+      <form class="futari-settings-form" data-account-settings-form>
+        <label>
+          <span>名前</span>
+          <input type="text" name="name" value="${escapeHtml(profile.name || '')}" maxlength="24" />
+        </label>
+        <label>
+          <span>登録メール</span>
+          <input type="email" value="${escapeHtml(email)}" readonly />
+        </label>
+        <label>
+          <span>パスワード</span>
+          <input type="text" value="${maskPassword()}" readonly />
+        </label>
+        <label>
+          <span>記念日</span>
+          <input type="date" name="anniversaryDate" value="${escapeHtml(couple.anniversaryDate || '')}" />
+        </label>
+        <label>
+          <span>誕生日</span>
+          <input type="date" name="birthday" value="${escapeHtml(profile.birthday || '')}" />
+        </label>
+        <button class="futari-settings-save" type="submit">保存</button>
+      </form>
+    </section>
+  `;
+}
+
+function renderPartnerSettings(state = {}, uiState = {}) {
+  const partner = uiState.partnerProfile || {};
+  const hasPartner = Boolean(partner.hasPartner);
+  const name = hasPartner ? partner.name : '';
+  const birthday = hasPartner ? partner.birthday : '';
+  return `
+    <section class="futari-settings-panel futari-dashboard-card">
+      <div class="futari-settings-panel__head">
+        <button type="button" data-profile-settings-back aria-label="戻る">${getIcon('arrowLeft')}</button>
+        <h1>相手</h1>
+      </div>
+      ${partner.loading ? `<p class="futari-settings-note">相手情報を読み込んでいます。</p>` : ''}
+      <div class="futari-settings-partner ${hasPartner ? '' : 'is-pending'}">
+        <div class="futari-settings-form futari-settings-form--readonly">
+          <label>
+            <span>名前</span>
+            <input type="text" value="${escapeHtml(name)}" placeholder="名前" readonly disabled />
+          </label>
+          <label>
+            <span>誕生日</span>
+            <input type="date" value="${escapeHtml(birthday)}" readonly disabled />
+          </label>
+          <button class="futari-settings-save" type="button" disabled>保存</button>
+        </div>
+        ${hasPartner ? '' : '<div class="futari-settings-partner__veil">登録前</div>'}
+      </div>
+      ${hasPartner ? '' : renderInviteLinkCard(uiState.inviteLink || {})}
+      ${partner.error ? `<p class="futari-settings-note is-error">${escapeHtml(partner.error)}</p>` : ''}
+    </section>
+  `;
+}
+
+function renderConfirmSettings(kind = 'logout', step = 1) {
+  const isDelete = kind === 'delete';
+  const total = isDelete ? 5 : 2;
+  const title = isDelete ? 'アカウント削除' : 'ログアウト';
+  const body = isDelete
+    ? 'アカウントと保存データを削除します。この操作は取り消せません。'
+    : 'この端末からログアウトします。';
+  return `
+    <section class="futari-settings-panel futari-dashboard-card">
+      <div class="futari-settings-panel__head">
+        <button type="button" data-profile-settings-back aria-label="戻る">${getIcon('arrowLeft')}</button>
+        <h1>${title}</h1>
+      </div>
+      <div class="futari-settings-confirm">
+        <p>${body}</p>
+        <strong>${step} / ${total}</strong>
+        <button class="${isDelete ? 'is-danger' : ''}" type="button" data-profile-confirm-action="${kind}">
+          ${step >= total ? `${title}する` : '次へ'}
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+function renderSettingsScreen(state = {}, uiState = {}) {
+  switch (uiState.profileSection) {
+    case 'settingsAccount':
+      return renderAccountSettings(state, uiState);
+    case 'settingsPartner':
+      return renderPartnerSettings(state, uiState);
+    case 'settingsLogout':
+      return renderConfirmSettings('logout', uiState.settingsConfirmStep || 1);
+    case 'settingsDelete':
+      return renderConfirmSettings('delete', uiState.settingsConfirmStep || 1);
+    default:
+      return renderSettingsList();
+  }
+}
+
+function renderSettingsButtonIcon() {
+  return `
+    <svg class="futari-dashboard-settings__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+      <path d="M9.59 3.94c.09-.54.56-.94 1.11-.94h2.6c.55 0 1.02.4 1.11.94l.22 1.31c.06.38.32.69.66.85.08.04.16.08.24.13.33.19.73.21 1.09.08l1.24-.46c.52-.19 1.1.02 1.38.5l1.3 2.25c.27.48.17 1.09-.25 1.44l-1.02.85c-.3.25-.45.62-.42 1.01a5.7 5.7 0 0 1 0 .28c-.03.39.12.76.42 1.01l1.02.85c.42.35.52.96.25 1.44l-1.3 2.25c-.28.48-.86.69-1.38.5l-1.24-.46c-.36-.13-.76-.11-1.09.08-.08.05-.16.09-.24.13-.34.16-.6.47-.66.85l-.22 1.31c-.09.54-.56.94-1.11.94h-2.6c-.55 0-1.02-.4-1.11-.94l-.22-1.31c-.06-.38-.32-.69-.66-.85a5.49 5.49 0 0 1-.24-.13c-.33-.19-.73-.21-1.09-.08l-1.24.46c-.52.19-1.1-.02-1.38-.5l-1.3-2.25c-.27-.48-.17-1.09.25-1.44l1.02-.85c.3-.25.45-.62.42-1.01a5.7 5.7 0 0 1 0-.28c.03-.39-.12-.76-.42-1.01l-1.02-.85c-.42-.35-.52-.96-.25-1.44l1.3-2.25c.28-.48.86-.69 1.38-.5l1.24.46c.36.13.76.11 1.09-.08.08-.05.16-.09.24-.13.34-.16.6-.47.66-.85l.22-1.31Z"/>
+      <circle cx="12" cy="12" r="3.05"/>
+    </svg>
   `;
 }
 
@@ -76,11 +247,15 @@ export function renderProfile(state, uiState = {}) {
   const anniversaryDate = state.couple?.anniversaryDate || '2025-05-15';
   const totalDates = (state.couple?.calendarEntries || []).length;
   const todos = state.couple?.todos || [];
+  const isSettings = String(uiState.profileSection || '').startsWith('settings');
 
   return `
     <section class="page page--profile page--futari page--futari-dashboard">
       <div class="futari-dashboard-shell">
         <header class="futari-dashboard-hero">
+          <button class="futari-dashboard-settings" type="button" data-profile-open-settings aria-label="settings">
+            ${renderSettingsButtonIcon()}
+          </button>
           <button class="futari-dashboard-bell" type="button" aria-label="notifications">
             ${getIcon('bell')}
             <span></span>
@@ -89,6 +264,7 @@ export function renderProfile(state, uiState = {}) {
           <div class="couple-brand__line" aria-hidden="true"><span></span><span></span></div>
         </header>
 
+        ${isSettings ? renderSettingsScreen(state, uiState) : `
         <section class="futari-dashboard-top">
           <article class="futari-dashboard-card futari-dashboard-card--anniversary">
             <div>
@@ -150,6 +326,8 @@ export function renderProfile(state, uiState = {}) {
             ${getIcon('chevronRight')}
           </button>
         </section>
+        ${renderInviteLinkCard(uiState.inviteLink || {})}
+        `}
       </div>
     </section>
   `;

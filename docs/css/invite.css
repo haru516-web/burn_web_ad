@@ -60,6 +60,13 @@
   color: #ffffff;
 }
 
+.invite-card__lead {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .invite-card__field {
   display: block;
 }
@@ -70,8 +77,8 @@
   border: 1px solid rgba(255, 255, 255, 0.42);
   background: rgba(255, 255, 255, 0.86);
   color: #14100e;
-  font-size: 28px;
-  letter-spacing: 0.32em;
+  font-size: 16px;
+  letter-spacing: 0.06em;
   text-align: center;
 }
 
@@ -81,8 +88,27 @@
 }
 
 .invite-card__error {
-  margin: -8px 0 0;
+  margin: -2px 0 0;
   color: #8f4350;
+  font-size: 12px;
+  text-align: center;
+}
+
+.invite-card__submit {
+  min-height: 48px;
+  border-radius: 999px;
+  color: #fff;
+  background: #c98592;
+  font-weight: 700;
+}
+
+.invite-card__submit:disabled {
+  opacity: 0.62;
+}
+
+.invite-card__message {
+  margin: -2px 0 0;
+  color: rgba(255, 255, 255, 0.86);
   font-size: 12px;
   text-align: center;
 }

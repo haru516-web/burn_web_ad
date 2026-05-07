@@ -743,6 +743,8 @@ export { PROFILE_SHEET_FIELDS };
 function renderProfileBook(state) {
   const profile = state.profile || {};
   const sheet = profile.profileSheet || {};
+  const profileName = String(profile.name || 'you').trim() || 'you';
+  const birthdayParts = String(profile.birthday || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const fields = PROFILE_SHEET_FIELDS;
   const legacyFields = [
     ['name', 'なまえ', 18.3, 11.5, 31.0, 2.7],
@@ -779,7 +781,13 @@ function renderProfileBook(state) {
   ];
   const renderField = ([name, label, left, top, width, height, type = 'input']) => {
     const style = `--x:${left}%;--y:${top}%;--w:${width}%;--h:${height}%;`;
-    const value = escapeDateAddText(sheet[name] || '');
+    const fallbackValues = {
+      name: profileName,
+      birthdayYear: birthdayParts?.[1] || '',
+      birthdayMonth: birthdayParts?.[2] || '',
+      birthdayDay: birthdayParts?.[3] || '',
+    };
+    const value = escapeDateAddText(sheet[name] || fallbackValues[name] || '');
     const numericAttrs = name.startsWith('birthday')
       ? ' inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off"'
       : ' autocomplete="off"';
@@ -792,7 +800,7 @@ function renderProfileBook(state) {
     ${renderBrand()}
     <button class="couple-list-back" type="button" data-list-back>${getIcon('returnLeft')} 戻る</button>
     <header class="couple-page-title">
-      <h1>プロフィール帳</h1>
+      <h1>${escapeDateAddText(profileName)}の記録</h1>
     </header>
     <section class="couple-date-list-page">
       <form class="couple-profile-sheet-form" data-profile-book-form>

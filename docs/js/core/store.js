@@ -6,6 +6,7 @@ const defaultState = {
     name: 'you',
     bio: 'A small local profile to collect your memories.',
     avatarData: '',
+    birthday: '',
     profileSheet: {},
   },
   posts: [],
@@ -15,6 +16,7 @@ const defaultState = {
   followingAuthors: [],
   couple: {
     partnerBName: 'Partner',
+    partnerBirthday: '',
     anniversaryDate: '2025-05-15',
     nextDateId: null,
     answers: {
@@ -135,6 +137,7 @@ function normalizeState(saved) {
       name: saved.profile?.name || defaultState.profile.name,
       bio: saved.profile?.bio || defaultState.profile.bio,
       avatarData: saved.profile?.avatarData || '',
+      birthday: saved.profile?.birthday || '',
       profileSheet: saved.profile?.profileSheet && typeof saved.profile.profileSheet === 'object'
         ? saved.profile.profileSheet
         : {},
@@ -148,6 +151,7 @@ function normalizeState(saved) {
     followingAuthors: Array.isArray(saved.followingAuthors) ? saved.followingAuthors : [],
     couple: {
       partnerBName: savedCouple.partnerBName || defaultState.couple.partnerBName,
+      partnerBirthday: savedCouple.partnerBirthday || '',
       anniversaryDate: savedCouple.anniversaryDate || defaultState.couple.anniversaryDate,
       nextDateId: savedCouple.nextDateId || null,
       answers: {
@@ -386,6 +390,7 @@ export function updateProfile(profile) {
   next.profile.name = profile.name;
   next.profile.bio = profile.bio;
   next.profile.avatarData = nextAvatar;
+  next.profile.birthday = profile.birthday ?? next.profile.birthday ?? '';
   next.profile.profileSheet = profile.profileSheet && typeof profile.profileSheet === 'object'
     ? profile.profileSheet
     : (next.profile.profileSheet || {});
@@ -402,6 +407,21 @@ export function updateProfile(profile) {
   next.followingAuthors = next.followingAuthors.map((name) => (
     name === previousName ? profile.name : name
   ));
+  commit(next);
+}
+
+export function updateCoupleSettings(settings = {}) {
+  const next = structuredClone(state);
+  next.couple = next.couple || structuredClone(defaultState.couple);
+  if (Object.prototype.hasOwnProperty.call(settings, 'anniversaryDate')) {
+    next.couple.anniversaryDate = String(settings.anniversaryDate || '').trim() || defaultState.couple.anniversaryDate;
+  }
+  if (Object.prototype.hasOwnProperty.call(settings, 'partnerBName')) {
+    next.couple.partnerBName = String(settings.partnerBName || '').trim() || defaultState.couple.partnerBName;
+  }
+  if (Object.prototype.hasOwnProperty.call(settings, 'partnerBirthday')) {
+    next.couple.partnerBirthday = String(settings.partnerBirthday || '').trim();
+  }
   commit(next);
 }
 

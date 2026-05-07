@@ -297,7 +297,6 @@
 .futari-dashboard-bell {
   position: absolute;
   top: 2px;
-  right: 0;
   width: 50px;
   height: 50px;
   display: grid;
@@ -308,9 +307,38 @@
   background: rgba(255, 253, 249, 0.78);
 }
 
+.futari-dashboard-bell {
+  right: 0;
+}
+
+.futari-dashboard-settings {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(222, 201, 188, 0.88);
+  border-radius: 50%;
+  color: #81736b;
+  background: rgba(255, 253, 249, 0.78);
+  box-shadow: none;
+}
+
 .futari-dashboard-bell svg {
   width: 24px;
   height: 24px;
+}
+
+.futari-dashboard-settings__icon {
+  width: 30px;
+  height: 30px;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .futari-dashboard-bell span {
@@ -790,6 +818,281 @@
 .futari-dashboard-plus button svg {
   width: 16px;
   height: 16px;
+}
+
+.futari-dashboard-invite {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 18px;
+}
+
+.futari-dashboard-invite__copy {
+  display: grid;
+  gap: 5px;
+}
+
+.futari-dashboard-invite__copy p,
+.futari-dashboard-invite__status {
+  margin: 0;
+  color: #8b7167;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.futari-dashboard-invite__copy h2 {
+  margin: 0;
+  color: #201916;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.futari-dashboard-invite__copy small {
+  color: #756359;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.futari-dashboard-invite__button {
+  min-height: 46px;
+  border-radius: 999px;
+  color: #fff;
+  background: #c98592;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.futari-dashboard-invite__button:disabled {
+  opacity: 0.62;
+}
+
+.futari-dashboard-invite__result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+.futari-dashboard-invite__result input {
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(226, 211, 199, 0.95);
+  border-radius: 12px;
+  color: #3d302b;
+  background: rgba(255, 253, 249, 0.78);
+  font-size: 12px;
+}
+
+.futari-dashboard-invite__result button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #9b706d;
+  background: rgba(244, 235, 229, 0.92);
+}
+
+.futari-dashboard-invite__result svg,
+.futari-dashboard-invite__result .feature-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.futari-dashboard-invite__status {
+  letter-spacing: 0;
+}
+
+.futari-dashboard-invite__status.is-error {
+  color: #8f4350;
+}
+
+.futari-settings-panel {
+  display: grid;
+  align-self: start;
+  align-content: start;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 18px;
+}
+
+.futari-settings-panel__head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.futari-settings-panel__head button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #8c7569;
+  background: rgba(244, 235, 229, 0.9);
+}
+
+.futari-settings-panel__head h1 {
+  margin: 0;
+  color: #201916;
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.futari-settings-panel__head svg {
+  width: 18px;
+  height: 18px;
+}
+
+.futari-settings-list,
+.futari-settings-form,
+.futari-settings-confirm {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.futari-settings-list__item {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border: 1px solid rgba(226, 211, 199, 0.9);
+  border-radius: 14px;
+  color: #332722;
+  background: rgba(255, 253, 249, 0.62);
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 16px;
+  text-align: left;
+}
+
+.futari-settings-list__item svg {
+  width: 16px;
+  height: 16px;
+}
+
+.futari-settings-list__item.is-danger {
+  color: #8f4350;
+}
+
+.futari-settings-form label {
+  display: grid;
+  gap: 7px;
+  color: #8b7167;
+  font-size: 12px;
+}
+
+.futari-settings-form input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(226, 211, 199, 0.95);
+  border-radius: 12px;
+  color: #3d302b;
+  background: rgba(255, 253, 249, 0.78);
+  font: inherit;
+}
+
+.futari-settings-form input[readonly] {
+  color: #8b7a70;
+  background: rgba(244, 235, 229, 0.58);
+}
+
+.futari-settings-note {
+  margin: 0;
+  color: #8b7167;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.futari-settings-note.is-error {
+  color: #8f4350;
+}
+
+.futari-settings-partner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.futari-settings-partner.is-pending .futari-settings-form {
+  filter: grayscale(1);
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.futari-settings-partner.is-pending::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(244, 239, 234, 0.54);
+  pointer-events: none;
+}
+
+.futari-settings-partner__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: rgba(82, 69, 61, 0.62);
+  font-family: "Zen Old Mincho", "Noto Serif JP", serif;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.futari-settings-form--readonly input:disabled,
+.futari-settings-form--readonly button:disabled {
+  cursor: default;
+}
+
+.futari-settings-save,
+.futari-settings-confirm button {
+  min-height: 46px;
+  border-radius: 999px;
+  color: #fff;
+  background: #c98592;
+  font-weight: 700;
+}
+
+.futari-settings-confirm {
+  justify-items: center;
+  padding: 8px 0 4px;
+  text-align: center;
+}
+
+.futari-settings-confirm p {
+  margin: 0;
+  color: #756359;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.futari-settings-confirm strong {
+  color: #332722;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.futari-settings-confirm button {
+  width: min(100%, 220px);
+}
+
+.futari-settings-confirm button.is-danger {
+  background: #8f4350;
 }
 
 @media (max-width: 390px) {

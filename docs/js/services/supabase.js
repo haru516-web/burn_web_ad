@@ -59,6 +59,50 @@ export async function signOut() {
   return client.auth.signOut();
 }
 
+export async function deleteCurrentAccount() {
+  const client = requireSupabase();
+  return client.rpc('delete_current_account');
+}
+
+export async function updateCurrentUserProfile({ displayName, birthday } = {}) {
+  const client = requireSupabase();
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError) throw userError;
+  const user = userData.user;
+  if (!user) throw new Error('ログインが必要です');
+
+  const name = String(displayName || '').trim();
+  if (name) {
+    const { error: authError } = await client.auth.updateUser({
+      data: { name },
+    });
+    if (authError) throw authError;
+  }
+
+  return client
+    .from('profiles')
+    .upsert({
+      id: user.id,
+      email: user.email || '',
+      display_name: name || user.user_metadata?.name || user.email?.split('@')[0] || 'you',
+      birthday: birthday || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+}
+
+export async function getPartnerProfile() {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('get_partner_profile');
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    hasPartner: Boolean(row?.has_partner),
+    name: row?.display_name || '',
+    email: row?.email || '',
+    birthday: row?.birthday || '',
+  };
+}
+
 export async function getCurrentSession() {
   const client = requireSupabase();
   return client.auth.getSession();

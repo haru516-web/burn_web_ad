@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, addPost, upsertPostCache, upsertPostCacheMany, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, addPost, upsertPostCache, upsertPostCacheMany, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -38,10 +38,14 @@ import {
 import { cropFileToCirclePngDataUrl, fileToWebpDataUrl } from './utils/image.js';
 import {
   getCurrentSession,
+  getPartnerProfile,
   isSupabaseConfigured,
   onAuthStateChange,
+  deleteCurrentAccount,
   signInWithEmailPassword,
+  signOut,
   signUpWithEmail,
+  updateCurrentUserProfile,
 } from './services/supabase.js';
 import {
   completedPageToLocalPost,
@@ -49,6 +53,7 @@ import {
   saveCompletedPage,
 } from './services/completedPages.js';
 import { listPhotoAssets, savePhotoAsset } from './services/photoAssets.js';
+import { acceptInviteLink, createInviteLink, getInviteCodeFromUrl } from './services/inviteLinks.js';
 import { backupRecordMemory, restoreRecordMemoryImages } from './utils/recordMemoryBackup.js';
 
 const uiState = {
@@ -113,6 +118,27 @@ const uiState = {
   recordSelectedIds: [],
   recordEditingId: null,
   postDetailShouldScroll: false,
+  inviteCode: '',
+  inviteAcceptBusy: false,
+  inviteMessage: '',
+  inviteError: '',
+  inviteLink: {
+    busy: false,
+    url: '',
+    code: '',
+    message: '',
+    error: '',
+  },
+  settingsConfirmStep: 1,
+  partnerProfile: {
+    loading: false,
+    loaded: false,
+    hasPartner: false,
+    name: '',
+    email: '',
+    birthday: '',
+    error: '',
+  },
 };
 let composeSelectionChangeCleanup = null;
 let viewportStabilityInstalled = false;
@@ -538,7 +564,7 @@ function renderAuthScreen() {
             ${isSignup ? `
               <label class="auth-field">
                 <span>&#21517;&#21069;</span>
-                <input type="text" name="name" autocomplete="name" maxlength="24" required placeholder="MIYU" />
+                <input type="text" name="name" autocomplete="name" maxlength="24" required placeholder="名前" />
               </label>
             ` : ''}
             <label class="auth-field">
@@ -581,7 +607,7 @@ function getPageHtml() {
     case 'search':
       return renderSearch(state, uiState);
     case 'invite':
-      return renderInvite();
+      return renderInvite(uiState);
     case 'compose':
       return renderCompose({
         stage: uiState.composeStage,
@@ -682,6 +708,37 @@ async function syncPhotoAssetsFromSupabase() {
     return true;
   } catch (error) {
     console.warn('Failed to load photo assets from Supabase. Using local cache.', error);
+    return false;
+  }
+}
+
+async function syncPartnerProfileFromSupabase() {
+  if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated') return false;
+  uiState.partnerProfile = {
+    ...uiState.partnerProfile,
+    loading: true,
+    error: '',
+  };
+  try {
+    const partner = await getPartnerProfile();
+    uiState.partnerProfile = {
+      loading: false,
+      loaded: true,
+      hasPartner: partner.hasPartner,
+      name: partner.name,
+      email: partner.email,
+      birthday: partner.birthday,
+      error: '',
+    };
+    return true;
+  } catch (error) {
+    uiState.partnerProfile = {
+      ...uiState.partnerProfile,
+      loading: false,
+      loaded: true,
+      hasPartner: false,
+      error: error?.message || '相手情報の取得に失敗しました',
+    };
     return false;
   }
 }
@@ -966,6 +1023,7 @@ function navigate(screen) {
     resetProfileAvatarDraft();
     uiState.profileAuthor = null;
     uiState.profileSection = 'pages';
+    uiState.settingsConfirmStep = 1;
     uiState.profileLibraryTab = 'liked';
     uiState.profileFindQuery = '';
     uiState.profileFindTags = [];
@@ -1001,6 +1059,7 @@ function openProfile(authorName) {
   uiState.profileEditOpen = false;
   uiState.profileAuthor = authorName || null;
   uiState.profileSection = authorName ? null : 'pages';
+  uiState.settingsConfirmStep = 1;
   uiState.profileLibraryTab = 'liked';
   uiState.profileFindQuery = '';
   uiState.profileFindTags = [];
@@ -2588,6 +2647,53 @@ function bindInviteEvents() {
     if (error) error.hidden = false;
     input.focus();
     input.select();
+  });
+
+  requestAnimationFrame(() => input.focus());
+}
+
+function bindInviteLinkEvents() {
+  const form = document.querySelector('[data-invite-form]');
+  const input = document.querySelector('[data-invite-code]');
+  if (!form || !input) return;
+
+  input.addEventListener('input', () => {
+    uiState.inviteCode = String(input.value || '').trim();
+    uiState.inviteError = '';
+    uiState.inviteMessage = '';
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (uiState.inviteAcceptBusy) return;
+    const code = String(input.value || '').trim();
+    if (!code) {
+      uiState.inviteError = '招待コードがありません';
+      renderScreen();
+      return;
+    }
+
+    uiState.inviteAcceptBusy = true;
+    uiState.inviteError = '';
+    uiState.inviteMessage = '';
+    renderScreen();
+
+    try {
+      await acceptInviteLink(code);
+      uiState.inviteMessage = '招待を承認しました';
+      uiState.inviteCode = code;
+      await Promise.all([
+        syncCompletedPagesFromSupabase(),
+        syncPhotoAssetsFromSupabase(),
+        syncPartnerProfileFromSupabase(),
+      ]);
+      uiState.inviteAcceptBusy = false;
+      navigate('home');
+    } catch (error) {
+      uiState.inviteError = error?.message || '招待の承認に失敗しました';
+      uiState.inviteAcceptBusy = false;
+      renderScreen();
+    }
   });
 
   requestAnimationFrame(() => input.focus());
@@ -7937,9 +8043,17 @@ async function saveRecordPhotoToDevice() {
 
 function getProfileSheetFormValues(form) {
   const formData = new FormData(form);
+  const currentProfile = getState().profile || {};
+  const birthdayParts = String(currentProfile.birthday || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const fallbackValues = {
+    name: String(currentProfile.name || 'you').trim() || 'you',
+    birthdayYear: birthdayParts?.[1] || '',
+    birthdayMonth: birthdayParts?.[2] || '',
+    birthdayDay: birthdayParts?.[3] || '',
+  };
   return Object.fromEntries(
     Array.from(formData.entries()).map(([key, value]) => {
-      const text = String(value || '').trim();
+      const text = String(value || fallbackValues[key] || '').trim();
       if (key === 'birthdayYear' || key === 'birthdayMonth' || key === 'birthdayDay') {
         return [key, text.replace(/\D/g, '').slice(0, 2)];
       }
@@ -8531,6 +8645,107 @@ function bindProfileEvents() {
     });
   });
 
+  document.querySelectorAll('[data-profile-open-settings]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.profileSection = 'settings';
+      uiState.settingsConfirmStep = 1;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-settings-close]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.profileSection = 'pages';
+      uiState.settingsConfirmStep = 1;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-settings-back]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.profileSection = 'settings';
+      uiState.settingsConfirmStep = 1;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-settings-view]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const view = button.dataset.profileSettingsView;
+      const nextSectionByView = {
+        account: 'settingsAccount',
+        partner: 'settingsPartner',
+        logout: 'settingsLogout',
+        delete: 'settingsDelete',
+      };
+      uiState.profileSection = nextSectionByView[view] || 'settings';
+      uiState.settingsConfirmStep = 1;
+      renderScreen();
+      if (view === 'partner') {
+        syncPartnerProfileFromSupabase().finally(() => {
+          if (uiState.profileSection === 'settingsPartner') renderScreen();
+        });
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-account-settings-form]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const currentProfile = getState().profile || {};
+      const name = String(formData.get('name') || currentProfile.name || 'you').trim() || 'you';
+      const birthday = String(formData.get('birthday') || '').trim();
+      updateProfile({
+        ...currentProfile,
+        name,
+        birthday,
+      });
+      updateCoupleSettings({
+        anniversaryDate: String(formData.get('anniversaryDate') || '').trim(),
+      });
+      try {
+        const result = await updateCurrentUserProfile({ displayName: name, birthday });
+        if (result?.error) throw result.error;
+      } catch (error) {
+        console.warn('Failed to sync profile settings to Supabase.', error);
+      }
+      uiState.profileSection = 'settings';
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-confirm-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const kind = button.dataset.profileConfirmAction;
+      const total = kind === 'delete' ? 5 : 2;
+      if ((uiState.settingsConfirmStep || 1) < total) {
+        uiState.settingsConfirmStep = (uiState.settingsConfirmStep || 1) + 1;
+        renderScreen();
+        return;
+      }
+
+      button.disabled = true;
+      try {
+        if (kind === 'delete') {
+          const result = await deleteCurrentAccount();
+          if (result?.error) throw result.error;
+        } else {
+          const result = await signOut();
+          if (result?.error) throw result.error;
+        }
+      } catch (error) {
+        uiState.profileSection = 'settings';
+        uiState.settingsConfirmStep = 1;
+        uiState.inviteLink = {
+          ...uiState.inviteLink,
+          error: error?.message || '処理に失敗しました',
+        };
+        renderScreen();
+      }
+    });
+  });
+
   document.querySelectorAll('[data-profile-section]').forEach((button) => {
     button.addEventListener('click', () => {
       uiState.profileSection = button.dataset.profileSection;
@@ -8600,6 +8815,58 @@ function bindProfileEvents() {
     button.addEventListener('click', () => {
       uiState.plusPlanOpen = true;
       renderModals();
+    });
+  });
+
+  document.querySelectorAll('[data-create-invite-link]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      if (uiState.inviteLink.busy) return;
+      uiState.inviteLink = {
+        ...uiState.inviteLink,
+        busy: true,
+        message: '',
+        error: '',
+      };
+      renderScreen();
+      try {
+        const invite = await createInviteLink();
+        uiState.inviteLink = {
+          busy: false,
+          url: invite.url,
+          code: invite.code,
+          message: '招待リンクを発行しました',
+          error: '',
+        };
+      } catch (error) {
+        uiState.inviteLink = {
+          ...uiState.inviteLink,
+          busy: false,
+          message: '',
+          error: error?.message || '招待リンクの発行に失敗しました',
+        };
+      }
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-copy-invite-link]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const input = document.querySelector('[data-invite-link-output]');
+      const value = input?.value || uiState.inviteLink.url || '';
+      if (!value) return;
+      try {
+        await navigator.clipboard?.writeText(value);
+      } catch {
+        input?.focus();
+        input?.select();
+        document.execCommand?.('copy');
+      }
+      uiState.inviteLink = {
+        ...uiState.inviteLink,
+        message: 'コピーしました',
+        error: '',
+      };
+      renderScreen();
     });
   });
 
@@ -8891,8 +9158,10 @@ function bindAuthEvents() {
     render();
 
     try {
+      const inviteCode = getInviteCodeFromUrl();
+      const redirectPath = inviteCode ? `/invite?code=${encodeURIComponent(inviteCode)}` : '/';
       const result = uiState.authMode === 'signup'
-        ? await signUpWithEmail(email, password, { name })
+        ? await signUpWithEmail(email, password, { name, redirectPath })
         : await signInWithEmailPassword(email, password);
 
       if (result.error) {
@@ -9001,7 +9270,7 @@ function bindPageEvents() {
       bindSearchEvents();
       break;
     case 'invite':
-      bindInviteEvents();
+      bindInviteLinkEvents();
       break;
     case 'compose':
       bindComposeEvents();
@@ -9040,6 +9309,19 @@ function applyAuthSession(session) {
   }
 }
 
+function applyInviteRouteFromUrl() {
+  if (typeof window === 'undefined') return false;
+  const code = getInviteCodeFromUrl();
+  const isInvitePath = window.location.pathname === '/invite';
+  if (!code && !isInvitePath) return false;
+  uiState.screen = 'invite';
+  uiState.inviteCode = code;
+  uiState.inviteAcceptBusy = false;
+  uiState.inviteMessage = '';
+  uiState.inviteError = '';
+  return true;
+}
+
 async function initializeAuth() {
   if (!isSupabaseConfigured) {
     uiState.authStatus = 'unconfigured';
@@ -9052,9 +9334,13 @@ async function initializeAuth() {
     if (error) throw error;
     applyAuthSession(data.session);
     if (data.session?.user) {
+      applyInviteRouteFromUrl();
+    }
+    if (data.session?.user) {
       await Promise.all([
         syncCompletedPagesFromSupabase(),
         syncPhotoAssetsFromSupabase(),
+        syncPartnerProfileFromSupabase(),
       ]);
     }
   } catch (error) {
@@ -9068,9 +9354,11 @@ async function initializeAuth() {
       uiState.screen = 'opening';
     }
     if (session?.user) {
+      applyInviteRouteFromUrl();
       Promise.all([
         syncCompletedPagesFromSupabase(),
         syncPhotoAssetsFromSupabase(),
+        syncPartnerProfileFromSupabase(),
       ]).finally(() => render());
       return;
     }
