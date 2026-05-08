@@ -1,4 +1,20 @@
 const KEY = 'memories-static-site-state-v1';
+let activeScope = 'guest';
+
+function normalizeScope(scope) {
+  return String(scope || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_') || 'guest';
+}
+
+function getStorageKey() {
+  return activeScope === 'guest' ? KEY : `${KEY}:user:${activeScope}`;
+}
+
+export function setStorageScope(scope) {
+  const nextScope = normalizeScope(scope);
+  if (nextScope === activeScope) return false;
+  activeScope = nextScope;
+  return true;
+}
 
 function stripDataUrls(value) {
   if (typeof value === 'string') {
@@ -102,7 +118,7 @@ function createMinimalStateForQuota(state) {
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(getStorageKey());
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -111,7 +127,7 @@ export function loadState() {
 
 export function saveState(state) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.setItem(getStorageKey(), JSON.stringify(state));
   } catch (error) {
     if (error?.name !== 'QuotaExceededError') {
       throw error;
@@ -119,11 +135,11 @@ export function saveState(state) {
 
     const reducedState = reduceStateForQuota(state);
     try {
-      localStorage.setItem(KEY, JSON.stringify(reducedState));
+      localStorage.setItem(getStorageKey(), JSON.stringify(reducedState));
       console.warn('Storage quota exceeded. Saved reduced state without large image blobs.');
     } catch (retryError) {
       try {
-        localStorage.setItem(KEY, JSON.stringify(createMinimalStateForQuota(reducedState)));
+        localStorage.setItem(getStorageKey(), JSON.stringify(createMinimalStateForQuota(reducedState)));
         console.warn('Storage quota exceeded. Saved minimal state without image blobs or drafts.');
       } catch (minimalError) {
         console.error('Failed to persist state after quota reduction.', minimalError);

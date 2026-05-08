@@ -1,4 +1,4 @@
-import { loadState, saveState } from '../utils/storage.js';
+import { loadState, saveState, setStorageScope } from '../utils/storage.js';
 import { createId } from '../utils/id.js';
 
 const defaultState = {
@@ -193,6 +193,13 @@ function normalizeState(saved) {
 let state = normalizeState(loadState());
 
 export function getState() {
+  return state;
+}
+
+export function switchStateScope(scope = 'guest') {
+  const changed = setStorageScope(scope);
+  if (!changed) return state;
+  state = normalizeState(loadState());
   return state;
 }
 

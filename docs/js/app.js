@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, addPost, upsertPostCache, upsertPostCacheMany, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, switchStateScope, addPost, upsertPostCache, upsertPostCacheMany, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -9293,6 +9293,7 @@ function bindPageEvents() {
 }
 
 function applyAuthSession(session) {
+  switchStateScope(session?.user?.id ? `user_${session.user.id}` : 'guest');
   uiState.authUser = session?.user || null;
   uiState.authStatus = session?.user ? 'authenticated' : 'unauthenticated';
   uiState.authBusy = false;
