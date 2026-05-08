@@ -697,6 +697,12 @@ function renderTodoInputCard() {
 
 function renderTodoList(state, uiState = {}) {
   const todos = state.couple?.todos || [];
+  const activeTodoTab = uiState.todoListTab === 'done' ? 'done' : 'pending';
+  const filteredTodos = todos.filter((todo) => activeTodoTab === 'done' ? todo.done : !todo.done);
+  const emptyTitle = activeTodoTab === 'done' ? '済のやりたいことはまだありません' : '未のやりたいことはまだありません';
+  const emptyCopy = activeTodoTab === 'done'
+    ? 'チェックをつけたものがここに表示されます。'
+    : 'これからやりたいことを追加してください。';
 
   return `
     ${renderBrand()}
@@ -704,15 +710,19 @@ function renderTodoList(state, uiState = {}) {
     <header class="couple-page-title">
       <h1>やりたいことリスト</h1>
     </header>
+    <div class="couple-todo-tabs" role="tablist" aria-label="やりたいこと表示">
+      <button class="${activeTodoTab === 'pending' ? 'is-active' : ''}" type="button" data-todo-list-tab="pending" role="tab" aria-selected="${activeTodoTab === 'pending'}">未</button>
+      <button class="${activeTodoTab === 'done' ? 'is-active' : ''}" type="button" data-todo-list-tab="done" role="tab" aria-selected="${activeTodoTab === 'done'}">済</button>
+    </div>
     <section class="couple-date-list-page">
       ${uiState.todoInputOpen ? renderTodoInputCard() : ''}
-      ${todos.length
-        ? todos.map(renderTodoListEntry).join('')
+      ${filteredTodos.length
+        ? filteredTodos.map(renderTodoListEntry).join('')
         : `
           <section class="couple-card couple-date-detail">
             <p class="couple-kicker">todo</p>
-            <h2>やりたいことはまだありません</h2>
-            <p>ふたりで叶えたいことが、ここに一覧で表示されます。</p>
+            <h2>${emptyTitle}</h2>
+            <p>${emptyCopy}</p>
           </section>
         `}
     </section>

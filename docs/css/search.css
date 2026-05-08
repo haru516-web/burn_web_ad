@@ -524,9 +524,32 @@
 .couple-todo-list-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
-  padding: 16px;
+  padding: 10px 12px;
+}
+
+.couple-todo-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(201, 143, 147, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.76);
+}
+
+.couple-todo-tabs button {
+  min-height: 38px;
+  border-radius: 999px;
+  color: rgba(86, 76, 68, 0.68);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.couple-todo-tabs button.is-active {
+  color: #fff;
+  background: #c98f93;
 }
 
 .couple-todo-list-card h2,
@@ -536,7 +559,7 @@
 
 .couple-todo-list-card h2 {
   font-family: 'Zen Old Mincho', 'Noto Serif JP', serif;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.35;
 }
 
@@ -554,14 +577,14 @@
 
 .couple-todo-controls {
   display: grid;
-  width: 46px;
+  width: 40px;
   justify-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 
 .couple-todo-check {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   justify-self: center;
   display: grid;
   place-items: center;
@@ -579,8 +602,8 @@
 }
 
 .couple-todo-delete {
-  width: 46px;
-  min-height: 28px;
+  width: 40px;
+  min-height: 24px;
   padding: 0;
   border-radius: 999px;
   background: rgba(130, 92, 86, 0.1);

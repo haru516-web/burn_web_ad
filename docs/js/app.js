@@ -84,6 +84,7 @@ const uiState = {
   composeSaveScope: 'shared',
   recordSaveScope: 'shared',
   todoInputOpen: false,
+  todoListTab: 'pending',
   homeTheme: 'light',
   homeCoreState: 'default',
   homeCoreTapTimestamps: [],
@@ -2548,6 +2549,14 @@ function bindSearchEvents() {
     });
   });
 
+  document.querySelectorAll('[data-todo-list-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.todoListTab = button.dataset.todoListTab === 'done' ? 'done' : 'pending';
+      uiState.todoInputOpen = false;
+      renderScreen();
+    });
+  });
+
   document.querySelectorAll('[data-delete-date-entry]').forEach((button) => {
     button.addEventListener('click', () => {
       deleteCoupleCalendarEntry(button.dataset.deleteDateEntry);
@@ -2578,6 +2587,7 @@ function bindSearchEvents() {
 
   document.querySelectorAll('[data-open-todo-input]').forEach((button) => {
     button.addEventListener('click', () => {
+      uiState.todoListTab = 'pending';
       uiState.todoInputOpen = true;
       renderScreen();
       document.querySelector('[name="todoTitle"]')?.focus();
@@ -2600,6 +2610,7 @@ function bindSearchEvents() {
       });
       if (!todo) return;
       uiState.todoInputOpen = false;
+      uiState.todoListTab = 'pending';
       renderScreen();
     });
   });
