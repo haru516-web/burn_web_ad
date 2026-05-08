@@ -104,7 +104,8 @@ function maskPassword() {
   return '********';
 }
 
-function renderSettingsList() {
+function renderSettingsList(uiState = {}) {
+  const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
   const items = [
     ['account', 'アカウント情報'],
     ['partner', '相手'],
@@ -119,12 +120,20 @@ function renderSettingsList() {
         <h1>設定</h1>
       </div>
       <div class="futari-settings-list">
-        ${items.map(([key, label]) => `
-          <button class="futari-settings-list__item ${key === 'delete' ? 'is-danger' : ''}" type="button" data-profile-settings-view="${key}">
+        ${items.map(([key, label]) => {
+          const isDisconnectDisabled = key === 'disconnect' && !hasPartner;
+          return `
+          <button
+            class="futari-settings-list__item ${key === 'delete' ? 'is-danger' : ''} ${isDisconnectDisabled ? 'is-disabled' : ''}"
+            type="button"
+            data-profile-settings-view="${key}"
+            ${isDisconnectDisabled ? 'disabled aria-disabled="true"' : ''}
+          >
             <span>${label}</span>
             ${getIcon('chevronRight')}
           </button>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </section>
   `;
@@ -239,7 +248,7 @@ function renderSettingsScreen(state = {}, uiState = {}) {
     case 'settingsDelete':
       return renderConfirmSettings('delete', uiState.settingsConfirmStep || 1);
     default:
-      return renderSettingsList();
+      return renderSettingsList(uiState);
   }
 }
 

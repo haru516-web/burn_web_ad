@@ -991,6 +991,30 @@
   color: #8f4350;
 }
 
+.futari-settings-list__item.is-disabled,
+.futari-settings-list__item:disabled {
+  position: relative;
+  overflow: hidden;
+  color: rgba(82, 69, 61, 0.42);
+  cursor: default;
+  filter: grayscale(1);
+}
+
+.futari-settings-list__item.is-disabled::after,
+.futari-settings-list__item:disabled::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(244, 239, 234, 0.58);
+  pointer-events: none;
+}
+
+.futari-settings-list__item.is-disabled svg,
+.futari-settings-list__item:disabled svg {
+  opacity: 0.42;
+}
+
 .futari-settings-form label {
   display: grid;
   gap: 7px;

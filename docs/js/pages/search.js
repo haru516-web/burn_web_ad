@@ -559,6 +559,7 @@ function renderAlbumEmpty(type = 'pages') {
 function renderPageList(state, uiState = {}) {
   const activeAlbumTab = uiState.albumTab === 'photo' ? 'photo' : 'pages';
   const activePageScope = uiState.albumPageScope === 'personal' ? 'personal' : 'shared';
+  const activePhotoScope = uiState.albumPhotoScope === 'personal' ? 'personal' : 'shared';
   const posts = (state.posts || [])
     .filter((post) => {
       if (activeAlbumTab !== 'pages') return true;
@@ -568,7 +569,7 @@ function renderPageList(state, uiState = {}) {
     .slice()
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const photos = (state.recordMemories || [])
-    .filter((memory) => memory.imageData)
+    .filter((memory) => memory.imageData || memory.storagePath || memory.thumbnailPath)
     .slice()
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const items = activeAlbumTab === 'photo' ? photos : posts;
@@ -587,6 +588,12 @@ function renderPageList(state, uiState = {}) {
       <div class="couple-album-tabs" role="tablist" aria-label="ページ保存先">
         <button class="${activePageScope === 'shared' ? 'is-active' : ''}" type="button" data-album-page-scope="shared" role="tab" aria-selected="${activePageScope === 'shared'}">共有ページ</button>
         <button class="${activePageScope === 'personal' ? 'is-active' : ''}" type="button" data-album-page-scope="personal" role="tab" aria-selected="${activePageScope === 'personal'}">個人ページ</button>
+      </div>
+    ` : ''}
+    ${activeAlbumTab === 'photo' ? `
+      <div class="couple-album-tabs" role="tablist" aria-label="photo scope">
+        <button class="${activePhotoScope === 'shared' ? 'is-active' : ''}" type="button" data-album-photo-scope="shared" role="tab" aria-selected="${activePhotoScope === 'shared'}">共有写真</button>
+        <button class="${activePhotoScope === 'personal' ? 'is-active' : ''}" type="button" data-album-photo-scope="personal" role="tab" aria-selected="${activePhotoScope === 'personal'}">個人写真</button>
       </div>
     ` : ''}
     <section class="couple-date-list-page couple-album-grid">

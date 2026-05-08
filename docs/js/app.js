@@ -81,6 +81,7 @@ const uiState = {
   dateAddDraft: null,
   dateListTab: 'upcoming',
   albumPageScope: 'shared',
+  albumPhotoScope: 'shared',
   composeSaveScope: 'shared',
   recordSaveScope: 'shared',
   todoInputOpen: false,
@@ -723,9 +724,9 @@ async function syncCompletedPagesFromSupabase(storageScope = uiState.albumPageSc
   }
 }
 
-async function syncPhotoAssetsFromSupabase() {
+async function syncPhotoAssetsFromSupabase(storageScope = uiState.albumPhotoScope || 'shared') {
   try {
-    const memories = await listPhotoAssets();
+    const memories = await listPhotoAssets({ storageScope });
     replaceRecordMemories(memories);
     return true;
   } catch (error) {
@@ -2330,9 +2331,12 @@ function bindSearchEvents() {
   });
 
   document.querySelectorAll('[data-album-tab]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       uiState.albumTab = button.dataset.albumTab === 'photo' ? 'photo' : 'pages';
       uiState.coupleView = 'pageList';
+      if (uiState.albumTab === 'photo') {
+        await syncPhotoAssetsFromSupabase(uiState.albumPhotoScope || 'shared');
+      }
       renderScreen();
     });
   });
@@ -2343,6 +2347,16 @@ function bindSearchEvents() {
       uiState.albumTab = 'pages';
       uiState.coupleView = 'pageList';
       await syncCompletedPagesFromSupabase(uiState.albumPageScope);
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-album-photo-scope]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      uiState.albumPhotoScope = button.dataset.albumPhotoScope === 'personal' ? 'personal' : 'shared';
+      uiState.albumTab = 'photo';
+      uiState.coupleView = 'pageList';
+      await syncPhotoAssetsFromSupabase(uiState.albumPhotoScope);
       renderScreen();
     });
   });
@@ -2753,9 +2767,11 @@ function bindInviteLinkEvents() {
       await acceptInviteLink(code);
       uiState.inviteMessage = '招待を承認しました';
       uiState.inviteCode = code;
+      uiState.albumPageScope = 'shared';
+      uiState.albumPhotoScope = 'shared';
       await Promise.all([
-        syncCompletedPagesFromSupabase(),
-        syncPhotoAssetsFromSupabase(),
+        syncCompletedPagesFromSupabase('shared'),
+        syncPhotoAssetsFromSupabase('shared'),
         syncPartnerProfileFromSupabase(),
       ]);
       uiState.inviteAcceptBusy = false;
@@ -8862,8 +8878,9 @@ function bindProfileEvents() {
           };
           uiState.albumTab = 'pages';
           uiState.albumPageScope = 'personal';
+          uiState.albumPhotoScope = 'personal';
           await Promise.all([
-            syncPhotoAssetsFromSupabase(),
+            syncPhotoAssetsFromSupabase('personal'),
             syncCompletedPagesFromSupabase('personal'),
           ]);
           uiState.profileSection = 'settings';
@@ -8904,10 +8921,15 @@ function bindProfileEvents() {
   document.querySelectorAll('[data-open-pages-list]').forEach((button) => {
     button.addEventListener('click', async () => {
       uiState.coupleView = 'pageList';
-      uiState.albumTab = 'pages';
       uiState.albumPageScope = uiState.albumPageScope || 'shared';
+      uiState.albumPhotoScope = uiState.albumPhotoScope || 'shared';
       uiState.screen = 'search';
-      await syncCompletedPagesFromSupabase(uiState.albumPageScope);
+      if (uiState.albumTab === 'photo') {
+        await syncPhotoAssetsFromSupabase(uiState.albumPhotoScope);
+      } else {
+        uiState.albumTab = 'pages';
+        await syncCompletedPagesFromSupabase(uiState.albumPageScope);
+      }
       render();
     });
   });
@@ -9030,6 +9052,7 @@ function bindProfileEvents() {
       try {
         await acceptInviteLink(code);
         uiState.albumPageScope = 'shared';
+        uiState.albumPhotoScope = 'shared';
         uiState.inviteLink = {
           ...uiState.inviteLink,
           acceptCode: '',
@@ -9040,7 +9063,7 @@ function bindProfileEvents() {
         await Promise.all([
           syncPartnerProfileFromSupabase(),
           syncCompletedPagesFromSupabase('shared'),
-          syncPhotoAssetsFromSupabase(),
+          syncPhotoAssetsFromSupabase('shared'),
         ]);
       } catch (error) {
         uiState.inviteLink = {

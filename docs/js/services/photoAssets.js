@@ -133,19 +133,21 @@ export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 
   };
 }
 
-export async function listPhotoAssets() {
+export async function listPhotoAssets({ storageScope = 'shared' } = {}) {
   const client = requireSupabase();
-  const { memorySpaceId } = await ensureProfileAndMemorySpace();
+  const resolvedScope = storageScope === 'personal' ? 'personal' : 'shared';
+  const { memorySpaceId } = await ensureProfileAndMemorySpace({ scope: resolvedScope });
   const { data, error } = await client
     .from('photo_assets')
     .select('*')
-    .eq('space_id', memorySpaceId)
+    .or(`space_id.eq.${memorySpaceId},memory_space_id.eq.${memorySpaceId}`)
     .is('deleted_at', null)
     .order('captured_at', { ascending: false });
   if (error) throw error;
 
   return Promise.all((data || []).map(async (asset) => {
-    const imageData = await createPhotoUrl(client, asset.storage_path);
+    const imageData = await createPhotoUrl(client, asset.thumbnail_path || asset.storage_path)
+      || await createPhotoUrl(client, asset.storage_path);
     return photoAssetToRecordMemory(asset, imageData);
   }));
 }
