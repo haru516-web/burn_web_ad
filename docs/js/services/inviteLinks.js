@@ -13,12 +13,6 @@ export function buildInviteUrl(code) {
   return url.toString();
 }
 
-function isMissingRpcError(error) {
-  return error?.code === 'PGRST202'
-    || error?.status === 404
-    || /Could not find the function|404|Not Found/i.test(String(error?.message || ''));
-}
-
 function createInviteCode() {
   const bytes = new Uint8Array(6);
   crypto.getRandomValues(bytes);
@@ -55,32 +49,18 @@ async function createInviteLinkDirect(client, user, memorySpaceId) {
     if (error.code !== '23505') break;
   }
 
-  throw lastError || new Error('招待リンクを発行できませんでした');
+  throw lastError || new Error('Invite link could not be created.');
 }
 
 export async function createInviteLink() {
   const client = requireSupabase();
   const { user, memorySpaceId } = await ensureProfileAndMemorySpace();
-  const { data, error } = await client.rpc('create_invite_link', {
-    target_couple_id: memorySpaceId,
-  });
-  if (error && isMissingRpcError(error)) {
-    return createInviteLinkDirect(client, user, memorySpaceId);
-  }
-  if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
-  const code = String(row?.code || '').trim();
-  if (!code) throw new Error('招待コードを作成できませんでした');
-  return {
-    code,
-    url: buildInviteUrl(code),
-    expiresAt: row?.expires_at || null,
-  };
+  return createInviteLinkDirect(client, user, memorySpaceId);
 }
 
 export async function acceptInviteLink(code) {
   const normalizedCode = String(code || '').trim();
-  if (!normalizedCode) throw new Error('招待コードがありません');
+  if (!normalizedCode) throw new Error('Invite code is missing.');
   const client = requireSupabase();
   await ensureProfileAndMemorySpace();
   const { data, error } = await client.rpc('accept_invite_link', {
