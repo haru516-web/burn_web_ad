@@ -258,6 +258,21 @@ export function upsertPostCacheMany(posts = []) {
   });
 }
 
+export function replaceCompletedPostCache(posts = []) {
+  const next = structuredClone(state);
+  const completedPosts = Array.isArray(posts)
+    ? posts.map((post) => normalizePost({
+        ...post,
+        createdAt: post.createdAt || new Date().toISOString(),
+      }))
+    : [];
+  next.posts = [
+    ...completedPosts,
+    ...next.posts.filter((post) => !String(post.id || '').startsWith('completed_')),
+  ];
+  commit(next);
+}
+
 export function replaceRecordMemories(recordMemories = []) {
   const next = structuredClone(state);
   next.recordMemories = Array.isArray(recordMemories)

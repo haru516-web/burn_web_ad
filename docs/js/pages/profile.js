@@ -104,6 +104,7 @@ function renderSettingsList() {
   const items = [
     ['account', 'アカウント情報'],
     ['partner', '相手'],
+    ['disconnect', '共有解除'],
     ['logout', 'ログアウト'],
     ['delete', 'アカウント削除'],
   ];
@@ -196,11 +197,14 @@ function renderPartnerSettings(state = {}, uiState = {}) {
 
 function renderConfirmSettings(kind = 'logout', step = 1) {
   const isDelete = kind === 'delete';
+  const isDisconnect = kind === 'disconnect';
   const total = isDelete ? 5 : 2;
-  const title = isDelete ? 'アカウント削除' : 'ログアウト';
+  const title = isDelete ? 'アカウント削除' : isDisconnect ? '共有解除' : 'ログアウト';
   const body = isDelete
     ? 'アカウントと保存データを削除します。この操作は取り消せません。'
-    : 'この端末からログアウトします。';
+    : isDisconnect
+      ? '相手との共有状態を解除して、自分だけの新しいスペースに切り替えます。共有済みの記録は相手側に残ります。'
+      : 'この端末からログアウトします。';
   return `
     <section class="futari-settings-panel futari-dashboard-card">
       <div class="futari-settings-panel__head">
@@ -224,6 +228,8 @@ function renderSettingsScreen(state = {}, uiState = {}) {
       return renderAccountSettings(state, uiState);
     case 'settingsPartner':
       return renderPartnerSettings(state, uiState);
+    case 'settingsDisconnect':
+      return renderConfirmSettings('disconnect', uiState.settingsConfirmStep || 1);
     case 'settingsLogout':
       return renderConfirmSettings('logout', uiState.settingsConfirmStep || 1);
     case 'settingsDelete':

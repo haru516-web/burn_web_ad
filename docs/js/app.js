@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, switchStateScope, addPost, upsertPostCache, upsertPostCacheMany, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -42,6 +42,7 @@ import {
   isSupabaseConfigured,
   onAuthStateChange,
   deleteCurrentAccount,
+  disconnectSharedSpace,
   signInWithEmailPassword,
   signOut,
   signUpWithEmail,
@@ -49,8 +50,10 @@ import {
 } from './services/supabase.js';
 import {
   completedPageToLocalPost,
+  ensureProfileAndMemorySpace,
   listCompletedPages,
   saveCompletedPage,
+  setPreferredMemorySpaceId,
 } from './services/completedPages.js';
 import { listPhotoAssets, savePhotoAsset } from './services/photoAssets.js';
 import { acceptInviteLink, createInviteLink, getInviteCodeFromUrl } from './services/inviteLinks.js';
@@ -693,7 +696,7 @@ async function syncCompletedPagesFromSupabase() {
   try {
     const pages = await listCompletedPages();
     const authorName = String(getState().profile?.name || 'you').trim() || 'you';
-    upsertPostCacheMany(pages.map((page) => completedPageToLocalPost(page, authorName)));
+    replaceCompletedPostCache(pages.map((page) => completedPageToLocalPost(page, authorName)));
     return true;
   } catch (error) {
     console.warn('Failed to load completed pages from Supabase. Using local cache.', error);
@@ -8675,6 +8678,7 @@ function bindProfileEvents() {
       const nextSectionByView = {
         account: 'settingsAccount',
         partner: 'settingsPartner',
+        disconnect: 'settingsDisconnect',
         logout: 'settingsLogout',
         delete: 'settingsDelete',
       };
@@ -8730,6 +8734,35 @@ function bindProfileEvents() {
         if (kind === 'delete') {
           const result = await deleteCurrentAccount();
           if (result?.error) throw result.error;
+        } else if (kind === 'disconnect') {
+          const { user, memorySpaceId } = await ensureProfileAndMemorySpace();
+          const result = await disconnectSharedSpace(memorySpaceId);
+          if (result?.error) throw result.error;
+          const row = Array.isArray(result?.data) ? result.data[0] : result?.data;
+          if (row?.new_space_id) {
+            setPreferredMemorySpaceId(user.id, row.new_space_id);
+          }
+          uiState.partnerProfile = {
+            loading: false,
+            loaded: true,
+            hasPartner: false,
+            name: '',
+            email: '',
+            birthday: '',
+            error: '',
+          };
+          uiState.inviteLink = {
+            ...uiState.inviteLink,
+            message: '共有を解除しました',
+            error: '',
+          };
+          await Promise.all([
+            syncPhotoAssetsFromSupabase(),
+            syncCompletedPagesFromSupabase(),
+          ]);
+          uiState.profileSection = 'settings';
+          uiState.settingsConfirmStep = 1;
+          renderScreen();
         } else {
           const result = await signOut();
           if (result?.error) throw result.error;

@@ -64,6 +64,13 @@ export async function deleteCurrentAccount() {
   return client.rpc('delete_current_account');
 }
 
+export async function disconnectSharedSpace(spaceId) {
+  const client = requireSupabase();
+  return client.rpc('disconnect_shared_space', {
+    target_space_id: spaceId,
+  });
+}
+
 export async function updateCurrentUserProfile({ displayName, birthday } = {}) {
   const client = requireSupabase();
   const { data: userData, error: userError } = await client.auth.getUser();

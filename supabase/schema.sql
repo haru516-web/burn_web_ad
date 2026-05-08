@@ -573,6 +573,60 @@ $$;
 
 grant execute on function public.get_partner_profile() to authenticated;
 
+create or replace function public.disconnect_shared_space(target_space_id uuid)
+returns table(new_space_id uuid, status text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  member_count integer;
+  created_space_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Login required.';
+  end if;
+
+  if target_space_id is null then
+    raise exception 'Shared space is missing.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.space_members sm
+    where sm.space_id = target_space_id
+      and sm.user_id = auth.uid()
+  ) then
+    raise exception 'You are not a member of this shared space.';
+  end if;
+
+  select count(*)
+  into member_count
+  from public.space_members sm
+  where sm.space_id = target_space_id;
+
+  if member_count > 1 then
+    delete from public.space_members
+    where space_id = target_space_id
+      and user_id = auth.uid();
+  end if;
+
+  insert into public.memory_spaces (owner_id, title)
+  values (auth.uid(), 'My BURN')
+  returning id into created_space_id;
+
+  insert into public.space_members (space_id, user_id, role)
+  values (created_space_id, auth.uid(), 'owner')
+  on conflict (space_id, user_id) do nothing;
+
+  new_space_id := created_space_id;
+  status := case when member_count > 1 then 'disconnected' else 'personal_space_created' end;
+  return next;
+end;
+$$;
+
+grant execute on function public.disconnect_shared_space(uuid) to authenticated;
+
 insert into storage.buckets (id, name, public)
 values
   ('photo-assets', 'photo-assets', false),
