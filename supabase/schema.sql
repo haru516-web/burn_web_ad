@@ -365,6 +365,19 @@ using (
   )
 );
 
+drop policy if exists "invite_links_insert_member" on public.invite_links;
+create policy "invite_links_insert_member"
+on public.invite_links for insert
+to authenticated
+with check (
+  inviter_id = auth.uid()
+  and exists (
+    select 1 from public.space_members sm
+    where sm.space_id = invite_links.couple_id
+      and sm.user_id = auth.uid()
+  )
+);
+
 create or replace function public.create_invite_link(target_couple_id uuid)
 returns table(code text, expires_at timestamptz)
 language plpgsql
