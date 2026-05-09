@@ -1,4 +1,4 @@
-import { loadState, saveState, setStorageScope } from '../utils/storage.js';
+﻿import { loadState, saveState, setStorageScope } from '../utils/storage.js';
 import { createId } from '../utils/id.js';
 
 const defaultState = {
@@ -167,9 +167,9 @@ function normalizeState(saved) {
         ? savedCouple.calendarEntries.map((entry) => ({
           id: entry.id || createId('date'),
           planId: entry.planId || '',
-          title: entry.title || 'ふたりの予定',
+    title: entry.title || 'ふたりの予定',
           date: entry.date || '2025-05-03',
-          time: entry.time || '11:00〜13:30',
+          time: entry.time || '11:00縲・3:30',
           place: entry.place || '',
           note: entry.note || '',
           image: entry.image || '',
@@ -180,7 +180,7 @@ function normalizeState(saved) {
       todos: Array.isArray(savedCouple.todos)
         ? savedCouple.todos.map((todo) => ({
           id: todo.id || createId('todo'),
-          title: todo.title || 'やりたいこと',
+          title: todo.title || '繧・ｊ縺溘＞縺薙→',
           note: todo.note || '',
           done: Boolean(todo.done),
           createdAt: todo.createdAt || new Date().toISOString(),
@@ -467,7 +467,7 @@ export function replaceCoupleDatabaseData({
     next.couple.calendarEntries = calendarEntries.map((entry) => ({
       id: entry.id || createId('date'),
       planId: entry.planId || '',
-      title: entry.title || 'ふたりの予定',
+    title: entry.title || 'ふたりの予定',
       date: entry.date || '2025-05-03',
       time: entry.time || '',
       place: entry.place || '',
@@ -482,7 +482,7 @@ export function replaceCoupleDatabaseData({
   if (Array.isArray(todos)) {
     next.couple.todos = todos.map((todo) => ({
       id: todo.id || createId('todo'),
-      title: todo.title || 'やりたいこと',
+      title: todo.title || '繧・ｊ縺溘＞縺薙→',
       note: todo.note || '',
       done: Boolean(todo.done),
       createdAt: todo.createdAt || new Date().toISOString(),
@@ -541,7 +541,7 @@ export function addCoupleCalendarEntry(entry) {
     planId: entry.planId || '',
     title: entry.title || 'ふたりの予定',
     date: entry.date || '2025-05-03',
-    time: entry.time || '11:00〜13:30',
+    time: entry.time || '11:00縲・3:30',
     place: entry.place || '',
     note: entry.note || '',
     image: entry.image || '',
@@ -552,6 +552,35 @@ export function addCoupleCalendarEntry(entry) {
   next.couple.nextDateId = normalized.id;
   commit(next);
   return normalized;
+}
+
+export function updateCoupleCalendarEntry(entryId, updates = {}) {
+  if (!entryId) return null;
+  const next = structuredClone(state);
+  next.couple = next.couple || structuredClone(defaultState.couple);
+  const entries = next.couple.calendarEntries || [];
+  const entryIndex = entries.findIndex((entry) => entry.id === entryId);
+  if (entryIndex < 0) return null;
+  const current = entries[entryIndex];
+  const updated = {
+    ...current,
+    planId: updates.planId ?? current.planId ?? '',
+    title: updates.title || current.title || 'ふたりの予定',
+    date: updates.date || current.date || '2025-05-03',
+    time: updates.time || current.time || '',
+    place: updates.place ?? current.place ?? '',
+    note: updates.note ?? current.note ?? '',
+    image: updates.image ?? current.image ?? '',
+    tags: Array.isArray(updates.tags) ? updates.tags : (Array.isArray(current.tags) ? current.tags : []),
+    createdAt: current.createdAt || new Date().toISOString(),
+  };
+  next.couple.calendarEntries = [
+    updated,
+    ...entries.filter((entry) => entry.id !== entryId),
+  ];
+  next.couple.nextDateId = updated.id;
+  commit(next);
+  return updated;
 }
 
 export function deleteCoupleCalendarEntry(entryId) {

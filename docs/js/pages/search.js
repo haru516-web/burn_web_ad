@@ -348,6 +348,7 @@ function renderTimeOptions(selected) {
 
 function renderDateAddText(uiState) {
   const draft = getDateAddDraft(uiState);
+  const isEditing = Boolean(uiState.dateEditingId);
   return `
     ${renderBrand()}
     <header class="date-add-title">
@@ -427,6 +428,8 @@ function renderDateDetail(state, uiState) {
         <strong>${pages.length}</strong>
       </div>
       <div class="couple-date-detail__actions">
+        <button type="button" data-edit-date-entry="${entry.id}">編集</button>
+        <button class="is-danger" type="button" data-delete-date-entry="${entry.id}">削除</button>
         <button type="button" data-home-nav="compose">ページを作る</button>
         <button type="button" data-couple-view="question">質問を送る</button>
       </div>
@@ -448,6 +451,7 @@ function renderDateListEntry(entry, isPast = false) {
       </div>
       <div class="couple-list-actions">
         <button type="button" data-home-calendar-target="${entry.date}">カレンダーで見る ${getIcon('chevronRight')}</button>
+        <button type="button" data-edit-date-entry="${entry.id}">編集</button>
         <button class="is-danger" type="button" data-delete-date-entry="${entry.id}">削除</button>
       </div>
     </article>

@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, replaceCoupleDatabaseData, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, replaceCoupleDatabaseData, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, updateCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -89,6 +89,7 @@ const uiState = {
   selectedCalendarDate: getTodayDateKey(),
   dateAddStep: 1,
   dateAddDraft: null,
+  dateEditingId: null,
   dateListTab: 'upcoming',
   albumPageScope: 'shared',
   albumPhotoScope: 'shared',
@@ -255,6 +256,29 @@ function shiftDateKeyMonth(dateString, delta) {
   const nextMonth = target.getMonth() + 1;
   const nextDay = Math.min(day, getDaysInMonth(nextYear, nextMonth));
   return formatDateKey(nextYear, nextMonth, nextDay);
+}
+
+function parseCalendarEntryTime(timeText = '') {
+  const matches = String(timeText || '').match(/\d{1,2}:\d{2}/g) || [];
+  return {
+    startTime: matches[0] || '11:00',
+    endTime: matches[1] || '13:30',
+  };
+}
+
+function createDateDraftFromEntry(entry = {}) {
+  const { startTime, endTime } = parseCalendarEntryTime(entry.time);
+  const tags = Array.isArray(entry.tags) ? entry.tags : [];
+  return {
+    date: entry.date || getTodayDateKey(),
+    timeOfDay: tags[1] || 'noon',
+    startTime,
+    endTime,
+    type: tags[0] || 'cafe',
+    title: entry.title || '',
+    place: entry.place || '',
+    note: entry.note || '',
+  };
 }
 
 const COMPOSE_TEXT_FONT_STACKS = {
@@ -2579,9 +2603,24 @@ function bindSearchEvents() {
     button.addEventListener('click', () => {
       uiState.coupleView = button.dataset.coupleView || 'calendar';
       if (uiState.coupleView === 'dateAdd') {
+        uiState.dateEditingId = null;
         uiState.dateAddStep = Number(button.dataset.dateAddStep) || uiState.dateAddStep || 1;
         updateDateAddDraft({ date: uiState.selectedCalendarDate || ensureDateAddDraft().date });
       }
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-edit-date-entry]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const entryId = button.dataset.editDateEntry;
+      const entry = (getState().couple?.calendarEntries || []).find((item) => item.id === entryId);
+      if (!entry) return;
+      uiState.dateEditingId = entry.id;
+      uiState.selectedCalendarDate = entry.date || uiState.selectedCalendarDate || getTodayDateKey();
+      uiState.dateAddDraft = createDateDraftFromEntry(entry);
+      uiState.dateAddStep = 1;
+      uiState.coupleView = 'dateAdd';
       renderScreen();
     });
   });
@@ -2753,6 +2792,7 @@ function bindSearchEvents() {
       uiState.coupleView = 'calendar';
       uiState.dateAddStep = 1;
       uiState.dateAddDraft = null;
+      uiState.dateEditingId = null;
       uiState.screen = 'home';
       render();
     });
@@ -2769,7 +2809,7 @@ function bindSearchEvents() {
         note: String(formData.get('note') || draft.note).trim(),
       });
       const finalDraft = ensureDateAddDraft();
-      const entry = addCoupleCalendarEntry({
+      const entryInput = {
         planId: '',
         title: finalDraft.title || 'ふたりのデート',
         date: finalDraft.date,
@@ -2777,11 +2817,16 @@ function bindSearchEvents() {
         place: finalDraft.place,
         note: finalDraft.note,
         tags: [finalDraft.type, finalDraft.timeOfDay].filter(Boolean),
-      });
+      };
+      const entry = uiState.dateEditingId
+        ? updateCoupleCalendarEntry(uiState.dateEditingId, entryInput)
+        : addCoupleCalendarEntry(entryInput);
+      if (!entry) return;
       uiState.selectedCalendarDate = entry.date;
       uiState.coupleView = 'calendar';
       uiState.dateAddStep = 1;
       uiState.dateAddDraft = null;
+      uiState.dateEditingId = null;
       await persistCoupleCalendarEntryToSupabase(entry);
       await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
       renderScreen();
@@ -2837,10 +2882,11 @@ function bindSearchEvents() {
   });
 
   document.querySelectorAll('[data-delete-date-entry]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const entryId = button.dataset.deleteDateEntry;
       deleteCoupleCalendarEntry(entryId);
-      deleteCoupleCalendarEntryFromSupabase(entryId);
+      await deleteCoupleCalendarEntryFromSupabase(entryId);
+      await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
       renderScreen();
     });
   });
