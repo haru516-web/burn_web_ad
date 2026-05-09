@@ -172,7 +172,8 @@ function renderRecordCamera(draft) {
           : `<button class="record-frame-switch" type="button" data-record-switch-frame aria-label="写真枠を切り替え">
                <span>${activeFrame === 'portrait' ? '縦' : '横'}</span>
              </button>
-             <video class="record-camera-video record-filter-${escapeHtml(activeFilter)}" data-record-camera-video autoplay playsinline muted style="transform:scale(${activeZoom});"></video>
+             <video class="record-camera-video" data-record-camera-video autoplay playsinline muted></video>
+             <canvas class="record-camera-canvas record-filter-${escapeHtml(activeFilter)}" data-record-camera-canvas aria-hidden="true"></canvas>
              <div class="record-camera-crop-frame record-camera-crop-frame--${activeFrame}" data-record-camera-crop-frame aria-hidden="true"></div>
              <button class="record-camera-switch" type="button" data-record-switch-camera aria-label="カメラを切り替え">
                ${getIcon('refreshCw')}

@@ -155,6 +155,7 @@ const uiState = {
 let composeSelectionChangeCleanup = null;
 let viewportStabilityInstalled = false;
 let recordCameraStream = null;
+let recordCameraPreviewFrame = 0;
 
 function resetWindowScroll() {
   if (typeof window === 'undefined') return;
@@ -7529,9 +7530,52 @@ function getRecordCameraFilterValue(filterId = 'none') {
 }
 
 function stopRecordCameraStream() {
+  if (recordCameraPreviewFrame) {
+    cancelAnimationFrame(recordCameraPreviewFrame);
+    recordCameraPreviewFrame = 0;
+  }
   if (!recordCameraStream) return;
   recordCameraStream.getTracks().forEach((track) => track.stop());
   recordCameraStream = null;
+}
+
+function getRecordCameraSourceRect(source, viewportWidth, viewportHeight, zoom = 1) {
+  const sourceWidth = source.videoWidth || source.naturalWidth || source.width;
+  const sourceHeight = source.videoHeight || source.naturalHeight || source.height;
+  if (!sourceWidth || !sourceHeight || !viewportWidth || !viewportHeight) return null;
+  const safeZoom = Math.min(5, Math.max(1, Number(zoom) || 1));
+  const scale = Math.max(viewportWidth / sourceWidth, viewportHeight / sourceHeight) * safeZoom;
+  const renderedWidth = sourceWidth * scale;
+  const renderedHeight = sourceHeight * scale;
+  const renderedLeft = (viewportWidth - renderedWidth) / 2;
+  const renderedTop = (viewportHeight - renderedHeight) / 2;
+  const sx = Math.min(sourceWidth - 1, Math.max(0, ((0 - renderedLeft) / renderedWidth) * sourceWidth));
+  const sy = Math.min(sourceHeight - 1, Math.max(0, ((0 - renderedTop) / renderedHeight) * sourceHeight));
+  const sw = Math.min(sourceWidth - sx, Math.max(1, (viewportWidth / renderedWidth) * sourceWidth));
+  const sh = Math.min(sourceHeight - sy, Math.max(1, (viewportHeight / renderedHeight) * sourceHeight));
+  return { sx, sy, sw, sh };
+}
+
+function drawRecordCameraPreview() {
+  const video = document.querySelector('[data-record-camera-video]');
+  const canvas = document.querySelector('[data-record-camera-canvas]');
+  if (!video || !canvas || !recordCameraStream) {
+    recordCameraPreviewFrame = 0;
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const width = Math.max(1, Math.round(rect.width * dpr));
+  const height = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const sourceRect = getRecordCameraSourceRect(video, rect.width, rect.height, uiState.recordDraft?.zoom);
+  if (ctx && sourceRect) {
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(video, sourceRect.sx, sourceRect.sy, sourceRect.sw, sourceRect.sh, 0, 0, width, height);
+  }
+  recordCameraPreviewFrame = requestAnimationFrame(drawRecordCameraPreview);
 }
 
 async function startRecordCameraStream() {
@@ -7564,6 +7608,8 @@ async function startRecordCameraStream() {
     video.srcObject = stream;
     await video.play().catch(() => {});
     video.closest('.record-camera-preview')?.classList.add('is-live');
+    if (recordCameraPreviewFrame) cancelAnimationFrame(recordCameraPreviewFrame);
+    recordCameraPreviewFrame = requestAnimationFrame(drawRecordCameraPreview);
   } catch (error) {
     console.warn('Record camera stream failed.', error);
     video.closest('.record-camera-preview')?.classList.add('is-camera-unavailable');
@@ -7597,20 +7643,9 @@ function drawRecordCameraSource(ctx, source, outputWidth, outputHeight, zoom = 1
   if (captureViewport) {
     const viewportWidth = Math.max(1, Number(captureViewport.viewportWidth) || outputWidth);
     const viewportHeight = Math.max(1, Number(captureViewport.viewportHeight) || outputHeight);
-    const frameLeft = Math.max(0, Number(captureViewport.left) || 0);
-    const frameTop = Math.max(0, Number(captureViewport.top) || 0);
-    const frameWidth = Math.max(1, Number(captureViewport.width) || outputWidth);
-    const frameHeight = Math.max(1, Number(captureViewport.height) || outputHeight);
-    const scale = Math.max(viewportWidth / sourceWidth, viewportHeight / sourceHeight) * zoom;
-    const renderedWidth = sourceWidth * scale;
-    const renderedHeight = sourceHeight * scale;
-    const renderedLeft = (viewportWidth - renderedWidth) / 2;
-    const renderedTop = (viewportHeight - renderedHeight) / 2;
-    const sx = Math.min(sourceWidth - 1, Math.max(0, ((frameLeft - renderedLeft) / renderedWidth) * sourceWidth));
-    const sy = Math.min(sourceHeight - 1, Math.max(0, ((frameTop - renderedTop) / renderedHeight) * sourceHeight));
-    const sw = Math.min(sourceWidth - sx, Math.max(1, (frameWidth / renderedWidth) * sourceWidth));
-    const sh = Math.min(sourceHeight - sy, Math.max(1, (frameHeight / renderedHeight) * sourceHeight));
-    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
+    const sourceRect = getRecordCameraSourceRect(source, viewportWidth, viewportHeight, zoom);
+    if (!sourceRect) return false;
+    ctx.drawImage(source, sourceRect.sx, sourceRect.sy, sourceRect.sw, sourceRect.sh, 0, 0, outputWidth, outputHeight);
     return true;
   }
   const scale = Math.max(outputWidth / sourceWidth, outputHeight / sourceHeight) * zoom;
@@ -8567,8 +8602,6 @@ function bindRecordEvents() {
       ...(uiState.recordDraft || {}),
       zoom,
     };
-    const video = document.querySelector('[data-record-camera-video]');
-    if (video) video.style.transform = `scale(${zoom})`;
     const control = event.target.closest('.record-camera-zoom');
     if (control) control.style.setProperty('--record-camera-zoom-progress', `${((zoom - 1) / 4) * 100}%`);
     const value = control?.querySelector('.record-camera-zoom__value');
