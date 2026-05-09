@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, replaceCoupleDatabaseData, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -58,6 +58,16 @@ import {
   setPreferredMemorySpaceId,
 } from './services/completedPages.js';
 import { listPhotoAssets, savePhotoAsset } from './services/photoAssets.js';
+import {
+  deleteCoupleCalendarEntryFromDatabase,
+  deleteCoupleTodoFromDatabase,
+  listCoupleCalendarEntries,
+  listCoupleTodos,
+  loadProfileSheet,
+  saveCoupleCalendarEntry,
+  saveCoupleTodo,
+  saveProfileSheet,
+} from './services/coupleData.js';
 import { acceptInviteLink, createInviteLink, getInviteCodeFromUrl } from './services/inviteLinks.js';
 import { backupRecordMemory, restoreRecordMemoryImages } from './utils/recordMemoryBackup.js';
 
@@ -834,6 +844,84 @@ async function syncPhotoAssetsForCurrentConnection(storageScope = uiState.albumP
     console.warn('Failed to load photo assets from Supabase. Using local cache.', failed.reason);
   }
   return false;
+}
+
+async function syncCoupleDataFromSupabase(storageScope = 'shared') {
+  try {
+    let [calendarEntries, todos, profileSheet] = await Promise.all([
+      listCoupleCalendarEntries({ storageScope }),
+      listCoupleTodos({ storageScope }),
+      loadProfileSheet(),
+    ]);
+    const localState = getState();
+    const localCalendarEntries = localState.couple?.calendarEntries || [];
+    const localTodos = localState.couple?.todos || [];
+    const localProfileSheet = localState.profile?.profileSheet || {};
+
+    if (!calendarEntries.length && localCalendarEntries.length) {
+      calendarEntries = localCalendarEntries;
+      await Promise.all(calendarEntries.map((entry) => saveCoupleCalendarEntry(entry, { storageScope })));
+    }
+    if (!todos.length && localTodos.length) {
+      todos = localTodos;
+      await Promise.all(todos.map((todo) => saveCoupleTodo(todo, { storageScope })));
+    }
+    if (!profileSheet && Object.keys(localProfileSheet).length) {
+      profileSheet = localProfileSheet;
+      await saveProfileSheet(profileSheet);
+    }
+
+    replaceCoupleDatabaseData({ calendarEntries, todos, profileSheet });
+    return true;
+  } catch (error) {
+    console.warn('Failed to load couple data from Supabase. Using local cache.', error);
+    return false;
+  }
+}
+
+async function persistCoupleCalendarEntryToSupabase(entry) {
+  if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated' || !entry?.id) return;
+  try {
+    await saveCoupleCalendarEntry(entry, { storageScope: 'shared' });
+  } catch (error) {
+    console.warn('Failed to save calendar entry to Supabase. Keeping local cache.', error);
+  }
+}
+
+async function deleteCoupleCalendarEntryFromSupabase(entryId) {
+  if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated' || !entryId) return;
+  try {
+    await deleteCoupleCalendarEntryFromDatabase(entryId);
+  } catch (error) {
+    console.warn('Failed to delete calendar entry from Supabase. Local cache was updated.', error);
+  }
+}
+
+async function persistCoupleTodoToSupabase(todo) {
+  if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated' || !todo?.id) return;
+  try {
+    await saveCoupleTodo(todo, { storageScope: 'shared' });
+  } catch (error) {
+    console.warn('Failed to save todo to Supabase. Keeping local cache.', error);
+  }
+}
+
+async function deleteCoupleTodoFromSupabase(todoId) {
+  if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated' || !todoId) return;
+  try {
+    await deleteCoupleTodoFromDatabase(todoId);
+  } catch (error) {
+    console.warn('Failed to delete todo from Supabase. Local cache was updated.', error);
+  }
+}
+
+async function persistProfileSheetToSupabase(profileSheet) {
+  if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated') return;
+  try {
+    await saveProfileSheet(profileSheet);
+  } catch (error) {
+    console.warn('Failed to save profile sheet to Supabase. Keeping local cache.', error);
+  }
 }
 
 async function syncPartnerProfileFromSupabase() {
@@ -2692,6 +2780,7 @@ function bindSearchEvents() {
       uiState.coupleView = 'calendar';
       uiState.dateAddStep = 1;
       uiState.dateAddDraft = null;
+      persistCoupleCalendarEntryToSupabase(entry);
       renderScreen();
     });
   });
@@ -2700,7 +2789,7 @@ function bindSearchEvents() {
     button.addEventListener('click', () => {
       const plan = DATE_PLANS.find((item) => item.id === button.dataset.addDatePlan);
       if (!plan) return;
-      addCoupleCalendarEntry({
+      const entry = addCoupleCalendarEntry({
         planId: plan.id,
         title: plan.title,
         date: plan.date,
@@ -2710,6 +2799,7 @@ function bindSearchEvents() {
         image: plan.image,
         tags: plan.tags,
       });
+      persistCoupleCalendarEntryToSupabase(entry);
       uiState.screen = 'home';
       uiState.coupleView = 'calendar';
       render();
@@ -2726,7 +2816,10 @@ function bindSearchEvents() {
 
   document.querySelectorAll('[data-toggle-couple-todo]').forEach((button) => {
     button.addEventListener('click', () => {
-      toggleCoupleTodo(button.dataset.toggleCoupleTodo);
+      const todoId = button.dataset.toggleCoupleTodo;
+      toggleCoupleTodo(todoId);
+      const todo = (getState().couple?.todos || []).find((item) => item.id === todoId);
+      persistCoupleTodoToSupabase(todo);
       renderScreen();
     });
   });
@@ -2741,7 +2834,9 @@ function bindSearchEvents() {
 
   document.querySelectorAll('[data-delete-date-entry]').forEach((button) => {
     button.addEventListener('click', () => {
-      deleteCoupleCalendarEntry(button.dataset.deleteDateEntry);
+      const entryId = button.dataset.deleteDateEntry;
+      deleteCoupleCalendarEntry(entryId);
+      deleteCoupleCalendarEntryFromSupabase(entryId);
       renderScreen();
     });
   });
@@ -2762,7 +2857,9 @@ function bindSearchEvents() {
 
   document.querySelectorAll('[data-delete-todo-entry]').forEach((button) => {
     button.addEventListener('click', () => {
-      deleteCoupleTodo(button.dataset.deleteTodoEntry);
+      const todoId = button.dataset.deleteTodoEntry;
+      deleteCoupleTodo(todoId);
+      deleteCoupleTodoFromSupabase(todoId);
       renderScreen();
     });
   });
@@ -2791,6 +2888,7 @@ function bindSearchEvents() {
         title: formData.get('todoTitle'),
       });
       if (!todo) return;
+      persistCoupleTodoToSupabase(todo);
       uiState.todoInputOpen = false;
       uiState.todoListTab = 'pending';
       renderScreen();
@@ -2806,7 +2904,9 @@ function bindSearchEvents() {
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      persistProfileSheet(getProfileSheetFormValues(form));
+      const profileSheet = getProfileSheetFormValues(form);
+      persistProfileSheet(profileSheet);
+      persistProfileSheetToSupabase(profileSheet);
       uiState.coupleView = 'calendar';
       uiState.screen = 'profile';
       render();
@@ -2822,6 +2922,7 @@ function bindSearchEvents() {
       button.textContent = '保存中';
       const profileSheet = getProfileSheetFormValues(form);
       persistProfileSheet(profileSheet);
+      persistProfileSheetToSupabase(profileSheet);
       const saved = await saveProfileSheetToDevice(profileSheet);
       button.disabled = false;
       button.textContent = previousText || '端末に保存';
@@ -9253,7 +9354,10 @@ function bindProfileEvents() {
 
   document.querySelectorAll('[data-profile-toggle-todo]').forEach((button) => {
     button.addEventListener('click', () => {
-      toggleCoupleTodo(button.dataset.profileToggleTodo);
+      const todoId = button.dataset.profileToggleTodo;
+      toggleCoupleTodo(todoId);
+      const todo = (getState().couple?.todos || []).find((item) => item.id === todoId);
+      persistCoupleTodoToSupabase(todo);
       renderScreen();
     });
   });
@@ -9355,6 +9459,7 @@ function bindProfileEvents() {
           syncPartnerProfileFromSupabase(),
           syncCompletedPagesFromSupabase('shared'),
           syncPhotoAssetsFromSupabase('shared'),
+          syncCoupleDataFromSupabase('shared'),
         ]);
       } catch (error) {
         uiState.inviteLink = {
@@ -9885,6 +9990,7 @@ async function initializeAuth() {
       await Promise.all([
         syncAlbumPagesForCurrentConnection(),
         syncPhotoAssetsForCurrentConnection(),
+        syncCoupleDataFromSupabase(),
       ]);
     }
   } catch (error) {
@@ -9903,6 +10009,7 @@ async function initializeAuth() {
         .then(() => Promise.all([
           syncAlbumPagesForCurrentConnection(),
           syncPhotoAssetsForCurrentConnection(),
+          syncCoupleDataFromSupabase(),
         ]))
         .finally(() => render());
       return;

@@ -455,6 +455,50 @@ export function updateCoupleSettings(settings = {}) {
   commit(next);
 }
 
+export function replaceCoupleDatabaseData({
+  calendarEntries,
+  todos,
+  profileSheet,
+} = {}) {
+  const next = structuredClone(state);
+  next.couple = next.couple || structuredClone(defaultState.couple);
+
+  if (Array.isArray(calendarEntries)) {
+    next.couple.calendarEntries = calendarEntries.map((entry) => ({
+      id: entry.id || createId('date'),
+      planId: entry.planId || '',
+      title: entry.title || 'ふたりの予定',
+      date: entry.date || '2025-05-03',
+      time: entry.time || '',
+      place: entry.place || '',
+      note: entry.note || '',
+      image: entry.image || '',
+      tags: Array.isArray(entry.tags) ? entry.tags : [],
+      createdAt: entry.createdAt || new Date().toISOString(),
+    }));
+    next.couple.nextDateId = next.couple.calendarEntries[0]?.id || null;
+  }
+
+  if (Array.isArray(todos)) {
+    next.couple.todos = todos.map((todo) => ({
+      id: todo.id || createId('todo'),
+      title: todo.title || 'やりたいこと',
+      note: todo.note || '',
+      done: Boolean(todo.done),
+      createdAt: todo.createdAt || new Date().toISOString(),
+    }));
+  }
+
+  if (profileSheet && typeof profileSheet === 'object') {
+    next.profile.profileSheet = profileSheet;
+    if (profileSheet.name) {
+      next.profile.name = String(profileSheet.name).trim() || next.profile.name;
+    }
+  }
+
+  commit(next);
+}
+
 export function toggleFollow(authorName) {
   const next = structuredClone(state);
   const exists = next.followingAuthors.includes(authorName);

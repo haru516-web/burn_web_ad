@@ -220,6 +220,78 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.couple_calendar_entries (
+  id text primary key,
+  space_id uuid not null references public.memory_spaces(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  display_scope text not null default 'couple' check (display_scope in ('personal', 'couple')),
+  plan_id text not null default '',
+  title text not null default '',
+  date date,
+  time_text text not null default '',
+  place text not null default '',
+  note text not null default '',
+  image text not null default '',
+  tags_json jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.couple_calendar_entries
+  add column if not exists space_id uuid references public.memory_spaces(id) on delete cascade,
+  add column if not exists author_id uuid references public.profiles(id) on delete cascade,
+  add column if not exists display_scope text not null default 'couple',
+  add column if not exists plan_id text not null default '',
+  add column if not exists title text not null default '',
+  add column if not exists date date,
+  add column if not exists time_text text not null default '',
+  add column if not exists place text not null default '',
+  add column if not exists note text not null default '',
+  add column if not exists image text not null default '',
+  add column if not exists tags_json jsonb not null default '[]'::jsonb,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists couple_calendar_entries_space_date_idx
+on public.couple_calendar_entries (space_id, date);
+
+create table if not exists public.couple_todos (
+  id text primary key,
+  space_id uuid not null references public.memory_spaces(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  display_scope text not null default 'couple' check (display_scope in ('personal', 'couple')),
+  title text not null default '',
+  note text not null default '',
+  done boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.couple_todos
+  add column if not exists space_id uuid references public.memory_spaces(id) on delete cascade,
+  add column if not exists author_id uuid references public.profiles(id) on delete cascade,
+  add column if not exists display_scope text not null default 'couple',
+  add column if not exists title text not null default '',
+  add column if not exists note text not null default '',
+  add column if not exists done boolean not null default false,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists couple_todos_space_created_idx
+on public.couple_todos (space_id, created_at desc);
+
+create table if not exists public.profile_sheets (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  sheet_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profile_sheets
+  add column if not exists sheet_json jsonb not null default '{}'::jsonb,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.space_invites (
   id uuid primary key default gen_random_uuid(),
   space_id uuid not null references public.memory_spaces(id) on delete cascade,
@@ -290,6 +362,9 @@ alter table public.completed_pages enable row level security;
 alter table public.photo_assets enable row level security;
 alter table public.page_text_layers enable row level security;
 alter table public.notifications enable row level security;
+alter table public.couple_calendar_entries enable row level security;
+alter table public.couple_todos enable row level security;
+alter table public.profile_sheets enable row level security;
 alter table public.space_invites enable row level security;
 alter table public.invite_links enable row level security;
 
@@ -301,6 +376,9 @@ grant select, insert, update on public.completed_pages to authenticated;
 grant select, insert, update on public.photo_assets to authenticated;
 grant select, insert, update on public.page_text_layers to authenticated;
 grant select, insert, update on public.notifications to authenticated;
+grant select, insert, update, delete on public.couple_calendar_entries to authenticated;
+grant select, insert, update, delete on public.couple_todos to authenticated;
+grant select, insert, update on public.profile_sheets to authenticated;
 grant select, insert, update on public.space_invites to authenticated;
 grant select, insert, update on public.invite_links to authenticated;
 
@@ -437,6 +515,123 @@ create policy "notifications_select_recipient"
 on public.notifications for select
 to authenticated
 using (user_id = auth.uid());
+
+drop policy if exists "couple_calendar_entries_select_member" on public.couple_calendar_entries;
+create policy "couple_calendar_entries_select_member"
+on public.couple_calendar_entries for select
+to authenticated
+using (
+  author_id = auth.uid()
+  or exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_calendar_entries.space_id
+      and sm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "couple_calendar_entries_insert_member" on public.couple_calendar_entries;
+create policy "couple_calendar_entries_insert_member"
+on public.couple_calendar_entries for insert
+to authenticated
+with check (
+  author_id = auth.uid()
+  and exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_calendar_entries.space_id
+      and sm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "couple_calendar_entries_update_author" on public.couple_calendar_entries;
+create policy "couple_calendar_entries_update_author"
+on public.couple_calendar_entries for update
+to authenticated
+using (author_id = auth.uid())
+with check (
+  author_id = auth.uid()
+  and exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_calendar_entries.space_id
+      and sm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "couple_calendar_entries_delete_author" on public.couple_calendar_entries;
+create policy "couple_calendar_entries_delete_author"
+on public.couple_calendar_entries for delete
+to authenticated
+using (author_id = auth.uid());
+
+drop policy if exists "couple_todos_select_member" on public.couple_todos;
+create policy "couple_todos_select_member"
+on public.couple_todos for select
+to authenticated
+using (
+  author_id = auth.uid()
+  or exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_todos.space_id
+      and sm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "couple_todos_insert_member" on public.couple_todos;
+create policy "couple_todos_insert_member"
+on public.couple_todos for insert
+to authenticated
+with check (
+  author_id = auth.uid()
+  and exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_todos.space_id
+      and sm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "couple_todos_update_author" on public.couple_todos;
+create policy "couple_todos_update_author"
+on public.couple_todos for update
+to authenticated
+using (
+  author_id = auth.uid()
+  or exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_todos.space_id
+      and sm.user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.space_members sm
+    where sm.space_id = couple_todos.space_id
+      and sm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "couple_todos_delete_author" on public.couple_todos;
+create policy "couple_todos_delete_author"
+on public.couple_todos for delete
+to authenticated
+using (author_id = auth.uid());
+
+drop policy if exists "profile_sheets_select_own" on public.profile_sheets;
+create policy "profile_sheets_select_own"
+on public.profile_sheets for select
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists "profile_sheets_insert_own" on public.profile_sheets;
+create policy "profile_sheets_insert_own"
+on public.profile_sheets for insert
+to authenticated
+with check (user_id = auth.uid());
+
+drop policy if exists "profile_sheets_update_own" on public.profile_sheets;
+create policy "profile_sheets_update_own"
+on public.profile_sheets for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
 
 drop policy if exists "space_invites_select_related" on public.space_invites;
 create policy "space_invites_select_related"
