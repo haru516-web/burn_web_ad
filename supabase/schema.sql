@@ -770,6 +770,18 @@ begin
   )
   on conflict (space_id, user_id) do nothing;
 
+  update public.couple_calendar_entries
+  set space_id = invite_record.couple_id,
+      display_scope = 'couple',
+      updated_at = now()
+  where author_id = auth.uid();
+
+  update public.couple_todos
+  set space_id = invite_record.couple_id,
+      display_scope = 'couple',
+      updated_at = now()
+  where author_id = auth.uid();
+
   update public.invite_links
   set accepted_by = auth.uid(),
       accepted_at = now(),
