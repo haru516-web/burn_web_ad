@@ -882,7 +882,8 @@ async function syncCoupleDataFromSupabase(storageScope = 'shared') {
 async function persistCoupleCalendarEntryToSupabase(entry) {
   if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated' || !entry?.id) return;
   try {
-    await saveCoupleCalendarEntry(entry, { storageScope: 'shared' });
+    const storageScope = uiState.partnerProfile?.hasPartner ? 'shared' : 'personal';
+    await saveCoupleCalendarEntry(entry, { storageScope });
   } catch (error) {
     console.warn('Failed to save calendar entry to Supabase. Keeping local cache.', error);
   }
@@ -900,7 +901,8 @@ async function deleteCoupleCalendarEntryFromSupabase(entryId) {
 async function persistCoupleTodoToSupabase(todo) {
   if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated' || !todo?.id) return;
   try {
-    await saveCoupleTodo(todo, { storageScope: 'shared' });
+    const storageScope = uiState.partnerProfile?.hasPartner ? 'shared' : 'personal';
+    await saveCoupleTodo(todo, { storageScope });
   } catch (error) {
     console.warn('Failed to save todo to Supabase. Keeping local cache.', error);
   }
@@ -2757,7 +2759,7 @@ function bindSearchEvents() {
   });
 
   document.querySelectorAll('[data-date-add-form]').forEach((form) => {
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const formData = new FormData(form);
       const draft = ensureDateAddDraft();
@@ -2780,13 +2782,14 @@ function bindSearchEvents() {
       uiState.coupleView = 'calendar';
       uiState.dateAddStep = 1;
       uiState.dateAddDraft = null;
-      persistCoupleCalendarEntryToSupabase(entry);
+      await persistCoupleCalendarEntryToSupabase(entry);
+      await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
       renderScreen();
     });
   });
 
   document.querySelectorAll('[data-add-date-plan]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const plan = DATE_PLANS.find((item) => item.id === button.dataset.addDatePlan);
       if (!plan) return;
       const entry = addCoupleCalendarEntry({
@@ -2799,7 +2802,8 @@ function bindSearchEvents() {
         image: plan.image,
         tags: plan.tags,
       });
-      persistCoupleCalendarEntryToSupabase(entry);
+      await persistCoupleCalendarEntryToSupabase(entry);
+      await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
       uiState.screen = 'home';
       uiState.coupleView = 'calendar';
       render();
@@ -9990,7 +9994,7 @@ async function initializeAuth() {
       await Promise.all([
         syncAlbumPagesForCurrentConnection(),
         syncPhotoAssetsForCurrentConnection(),
-        syncCoupleDataFromSupabase(),
+        syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal'),
       ]);
     }
   } catch (error) {
@@ -10009,7 +10013,7 @@ async function initializeAuth() {
         .then(() => Promise.all([
           syncAlbumPagesForCurrentConnection(),
           syncPhotoAssetsForCurrentConnection(),
-          syncCoupleDataFromSupabase(),
+          syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal'),
         ]))
         .finally(() => render());
       return;
