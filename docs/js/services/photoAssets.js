@@ -64,8 +64,10 @@ async function createPhotoUrl(client, storagePath) {
 
 function photoAssetToRecordMemory(asset, imageData = '') {
   const capturedAt = asset.captured_at || asset.created_at || new Date().toISOString();
+  const storageScope = asset.storageScope || asset.displayScope || (asset.display_scope === 'personal' ? 'personal' : 'shared');
   return {
     id: asset.id,
+    authorId: asset.author_id || asset.user_id || '',
     imageData,
     storagePath: asset.storage_path || '',
     thumbnailPath: asset.thumbnail_path || '',
@@ -77,18 +79,33 @@ function photoAssetToRecordMemory(asset, imageData = '') {
     pageCrop: asset.page_crop || { x: 0.5, y: 0.5, zoom: 1 },
     createdAt: capturedAt,
     expiresAt: asset.expires_at || null,
+    storageScope,
+    saveScope: asset.display_scope || asset.save_scope || (storageScope === 'personal' ? 'personal' : 'couple'),
   };
 }
 
-export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 'landscape', place = '', memo = '', createdAt = '' }) {
+function isMissingDisplayColumnError(error) {
+  const message = String(error?.message || error?.details || '');
+  return error?.code === '42703'
+    || message.includes('display_scope')
+    || message.includes('display_space_id')
+    || message.includes('author_id');
+}
+
+export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 'landscape', place = '', memo = '', createdAt = '', storageScope = 'shared' }) {
   if (!imageData) throw new Error('Photo image data is required.');
   const client = requireSupabase();
-  const { user, memorySpaceId } = await ensureProfileAndMemorySpace();
+  const displayScope = storageScope === 'personal' ? 'personal' : 'shared';
+  const displaySaveScope = displayScope === 'personal' ? 'personal' : 'couple';
+  const { user, memorySpaceId: storageSpaceId } = await ensureProfileAndMemorySpace({ scope: 'personal' });
+  const displaySpaceId = displayScope === 'shared'
+    ? (await ensureProfileAndMemorySpace({ scope: 'shared' })).memorySpaceId
+    : null;
   const capturedAt = createdAt ? new Date(createdAt) : new Date();
   const now = Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt;
   const assetId = crypto.randomUUID();
-  const storagePath = `${memorySpaceId}/${assetId}/original.webp`;
-  const thumbnailPath = `${memorySpaceId}/${assetId}/thumbnail.webp`;
+  const storagePath = `${storageSpaceId}/${assetId}/original.webp`;
+  const thumbnailPath = `${storageSpaceId}/${assetId}/thumbnail.webp`;
   const blob = await dataUrlToWebpBlob(imageData, { maxWidth: 1800, quality: 0.92 });
   const thumbnailBlob = await dataUrlToWebpBlob(imageData, { maxWidth: 420, quality: 0.78 });
 
@@ -108,25 +125,44 @@ export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 
     });
   if (thumbnailUploadError) throw thumbnailUploadError;
 
-  const { data, error } = await client
+  const insertPayload = {
+    id: assetId,
+    user_id: user.id,
+    author_id: user.id,
+    space_id: storageSpaceId,
+    memory_space_id: storageSpaceId,
+    display_space_id: displaySpaceId,
+    display_scope: displaySaveScope,
+    source_type: sourceType === 'camera' ? 'camera' : 'album',
+    storage_path: storagePath,
+    thumbnail_path: thumbnailPath,
+    captured_at: now.toISOString(),
+    expires_at: addDays(now, RETENTION_DAYS).toISOString(),
+    retention_days: RETENTION_DAYS,
+  };
+
+  let { data, error } = await client
     .from('photo_assets')
-    .insert({
-      id: assetId,
-      user_id: user.id,
-      space_id: memorySpaceId,
-      source_type: sourceType === 'camera' ? 'camera' : 'album',
-      storage_path: storagePath,
-      thumbnail_path: thumbnailPath,
-      captured_at: now.toISOString(),
-      expires_at: addDays(now, RETENTION_DAYS).toISOString(),
-      retention_days: RETENTION_DAYS,
-    })
+    .insert(insertPayload)
     .select('*')
     .single();
+  if (error && isMissingDisplayColumnError(error)) {
+    const {
+      author_id: _authorId,
+      display_space_id: _displaySpaceId,
+      display_scope: _displayScope,
+      ...legacyPayload
+    } = insertPayload;
+    ({ data, error } = await client
+      .from('photo_assets')
+      .insert(legacyPayload)
+      .select('*')
+      .single());
+  }
   if (error) throw error;
 
   return {
-    ...photoAssetToRecordMemory(data, imageData),
+    ...photoAssetToRecordMemory({ ...data, storageScope: displayScope }, imageData),
     place,
     memo,
     frame: frame === 'portrait' ? 'portrait' : 'landscape',
@@ -136,18 +172,36 @@ export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 
 export async function listPhotoAssets({ storageScope = 'shared' } = {}) {
   const client = requireSupabase();
   const resolvedScope = storageScope === 'personal' ? 'personal' : 'shared';
-  const { memorySpaceId } = await ensureProfileAndMemorySpace({ scope: resolvedScope });
-  const { data, error } = await client
+  const displayScope = resolvedScope === 'personal' ? 'personal' : 'couple';
+  const { user, memorySpaceId } = await ensureProfileAndMemorySpace({ scope: resolvedScope });
+  let query = client
     .from('photo_assets')
     .select('*')
-    .or(`space_id.eq.${memorySpaceId},memory_space_id.eq.${memorySpaceId}`)
     .is('deleted_at', null)
     .order('captured_at', { ascending: false });
+  if (resolvedScope === 'personal') {
+    query = query
+      .or(`author_id.eq.${user.id},user_id.eq.${user.id}`)
+      .eq('display_scope', displayScope);
+  } else {
+    query = query
+      .eq('display_space_id', memorySpaceId)
+      .eq('display_scope', displayScope);
+  }
+  let { data, error } = await query;
+  if (error && isMissingDisplayColumnError(error)) {
+    ({ data, error } = await client
+      .from('photo_assets')
+      .select('*')
+      .or(`space_id.eq.${memorySpaceId},memory_space_id.eq.${memorySpaceId}`)
+      .is('deleted_at', null)
+      .order('captured_at', { ascending: false }));
+  }
   if (error) throw error;
 
   return Promise.all((data || []).map(async (asset) => {
     const imageData = await createPhotoUrl(client, asset.thumbnail_path || asset.storage_path)
       || await createPhotoUrl(client, asset.storage_path);
-    return photoAssetToRecordMemory(asset, imageData);
+    return photoAssetToRecordMemory({ ...asset, storageScope: resolvedScope }, imageData);
   }));
 }

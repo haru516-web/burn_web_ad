@@ -116,8 +116,11 @@ end $$;
 create table if not exists public.photo_assets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
+  author_id uuid references public.profiles(id) on delete cascade,
   space_id uuid references public.memory_spaces(id) on delete set null,
   memory_space_id uuid references public.memory_spaces(id) on delete set null,
+  display_space_id uuid references public.memory_spaces(id) on delete set null,
+  display_scope text not null default 'couple' check (display_scope in ('personal', 'couple')),
   source_type text not null check (source_type in ('camera', 'album')),
   storage_path text not null,
   thumbnail_path text,
@@ -131,8 +134,11 @@ create table if not exists public.photo_assets (
 );
 
 alter table public.photo_assets
+  add column if not exists author_id uuid references public.profiles(id) on delete cascade,
   add column if not exists space_id uuid references public.memory_spaces(id) on delete set null,
   add column if not exists memory_space_id uuid references public.memory_spaces(id) on delete set null,
+  add column if not exists display_space_id uuid references public.memory_spaces(id) on delete set null,
+  add column if not exists display_scope text not null default 'couple',
   add column if not exists thumbnail_path text,
   add column if not exists expires_at timestamptz,
   add column if not exists retention_days integer not null default 3,
@@ -140,9 +146,35 @@ alter table public.photo_assets
 
 update public.photo_assets
 set space_id = coalesce(space_id, memory_space_id),
-    memory_space_id = coalesce(memory_space_id, space_id)
+    memory_space_id = coalesce(memory_space_id, space_id),
+    author_id = coalesce(author_id, user_id),
+    display_scope = coalesce(display_scope, 'couple'),
+    display_space_id = case
+      when coalesce(display_scope, 'couple') = 'couple' then coalesce(display_space_id, space_id, memory_space_id)
+      else null
+    end
 where space_id is null
-   or memory_space_id is null;
+   or memory_space_id is null
+   or author_id is null
+   or display_scope is null
+   or (display_scope = 'couple' and display_space_id is null);
+
+alter table public.photo_assets
+  alter column display_scope set default 'couple',
+  alter column display_scope set not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'photo_assets_display_scope_check'
+  ) then
+    alter table public.photo_assets
+      add constraint photo_assets_display_scope_check
+      check (display_scope in ('personal', 'couple'));
+  end if;
+end $$;
 
 create or replace function public.sync_photo_asset_space_ids()
 returns trigger
@@ -378,10 +410,10 @@ create policy "photo_assets_select_owner_or_member"
 on public.photo_assets for select
 to authenticated
 using (
-  user_id = auth.uid()
+  coalesce(author_id, user_id) = auth.uid()
   or exists (
     select 1 from public.space_members sm
-    where sm.space_id = coalesce(photo_assets.space_id, photo_assets.memory_space_id)
+    where sm.space_id = coalesce(photo_assets.display_space_id, photo_assets.space_id, photo_assets.memory_space_id)
       and sm.user_id = auth.uid()
   )
 );
@@ -392,9 +424,10 @@ on public.photo_assets for insert
 to authenticated
 with check (
   user_id = auth.uid()
+  and coalesce(author_id, user_id) = auth.uid()
   and exists (
     select 1 from public.space_members sm
-    where sm.space_id = coalesce(photo_assets.space_id, photo_assets.memory_space_id)
+    where sm.space_id = coalesce(photo_assets.display_space_id, photo_assets.space_id, photo_assets.memory_space_id)
       and sm.user_id = auth.uid()
   )
 );

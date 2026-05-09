@@ -2228,6 +2228,15 @@
   box-shadow: 0 8px 18px rgba(77, 48, 39, 0.16);
 }
 
+.couple-album-tabs button.is-disabled,
+.couple-album-tabs button:disabled {
+  color: rgba(93, 75, 68, 0.42);
+  background: rgba(112, 104, 99, 0.14);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .couple-album-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

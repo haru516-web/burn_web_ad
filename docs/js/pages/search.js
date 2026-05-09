@@ -559,11 +559,13 @@ function renderAlbumEmpty(type = 'pages') {
 
 function renderPageList(state, uiState = {}) {
   const activeAlbumTab = uiState.albumTab === 'photo' ? 'photo' : 'pages';
-  const activePageScope = uiState.albumPageScope === 'personal' ? 'personal' : 'shared';
-  const activePhotoScope = uiState.albumPhotoScope === 'personal' ? 'personal' : 'shared';
+  const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
+  const activePageScope = !hasPartner || uiState.albumPageScope === 'personal' ? 'personal' : 'shared';
+  const activePhotoScope = !hasPartner || uiState.albumPhotoScope === 'personal' ? 'personal' : 'shared';
   const posts = (state.posts || [])
     .filter((post) => {
       if (activeAlbumTab !== 'pages') return true;
+      if (!hasPartner) return true;
       if (!String(post.id || '').startsWith('completed_')) return activePageScope === 'shared';
       return (post.storageScope || 'shared') === activePageScope;
     })
@@ -587,13 +589,13 @@ function renderPageList(state, uiState = {}) {
     </div>
     ${activeAlbumTab === 'pages' ? `
       <div class="couple-album-tabs" role="tablist" aria-label="ページ保存先">
-        <button class="${activePageScope === 'shared' ? 'is-active' : ''}" type="button" data-album-page-scope="shared" role="tab" aria-selected="${activePageScope === 'shared'}">共有ページ</button>
+        <button class="${activePageScope === 'shared' ? 'is-active' : ''}${!hasPartner ? ' is-disabled' : ''}" type="button" data-album-page-scope="shared" role="tab" aria-selected="${activePageScope === 'shared'}" ${!hasPartner ? 'disabled aria-disabled="true"' : ''}>共有ページ</button>
         <button class="${activePageScope === 'personal' ? 'is-active' : ''}" type="button" data-album-page-scope="personal" role="tab" aria-selected="${activePageScope === 'personal'}">個人ページ</button>
       </div>
     ` : ''}
     ${activeAlbumTab === 'photo' ? `
       <div class="couple-album-tabs" role="tablist" aria-label="photo scope">
-        <button class="${activePhotoScope === 'shared' ? 'is-active' : ''}" type="button" data-album-photo-scope="shared" role="tab" aria-selected="${activePhotoScope === 'shared'}">共有写真</button>
+        <button class="${activePhotoScope === 'shared' ? 'is-active' : ''}${!hasPartner ? ' is-disabled' : ''}" type="button" data-album-photo-scope="shared" role="tab" aria-selected="${activePhotoScope === 'shared'}" ${!hasPartner ? 'disabled aria-disabled="true"' : ''}>共有写真</button>
         <button class="${activePhotoScope === 'personal' ? 'is-active' : ''}" type="button" data-album-photo-scope="personal" role="tab" aria-selected="${activePhotoScope === 'personal'}">個人写真</button>
       </div>
     ` : ''}

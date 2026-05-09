@@ -127,6 +127,20 @@
   touch-action: pan-y;
 }
 
+.screen-area--magazine {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
 .screen-area--profile {
   min-height: 100vh;
   min-height: 100svh;

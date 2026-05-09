@@ -577,6 +577,17 @@
   background: #f7f2ec;
 }
 
+.post-detail-card--photo {
+  align-content: start;
+}
+
+.post-detail-card__image--photo {
+  aspect-ratio: auto;
+  max-height: calc(100svh - 118px);
+  object-fit: contain;
+  background: #11100f;
+}
+
 .post-detail-card__action-row {
   display: flex;
   align-items: center;

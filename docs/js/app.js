@@ -114,6 +114,7 @@ const uiState = {
   composePreparedImageData: null,
   composePreparedImageDirty: true,
   openingTapGuardUntil: 0,
+  photoReturnState: null,
   postReturnScreen: 'timeline',
   postReturnProfileAuthor: null,
   profileReturnState: null,
@@ -202,6 +203,7 @@ function installViewportStabilityGuards() {
       '.screen-area--home',
       '.screen-area--timeline',
       '.screen-area--search',
+      '.screen-area--magazine',
       '.screen-area--profile',
       '.screen-area--post',
       '.screen-area--record',
@@ -648,6 +650,8 @@ function getPageHtml() {
         showOwnerMenu: uiState.postReturnScreen === 'profile',
       });
     }
+    case 'photo':
+      return renderPhotoDetail(state, uiState);
     default:
       return renderHome(state, uiState);
   }
@@ -659,6 +663,58 @@ function getActivePost(postId) {
 
 function getActivePhoto(photoId) {
   return getState().recordMemories.find((memory) => memory.id === photoId);
+}
+
+function getAlbumPhotosForDetail(state = getState()) {
+  return (state.recordMemories || [])
+    .filter((memory) => memory.imageData || memory.storagePath || memory.thumbnailPath)
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+function renderPhotoDetail(state, ui = uiState) {
+  const photos = getAlbumPhotosForDetail(state);
+  const activePhoto = photos.find((photo) => photo.id === ui.previewPhotoId) || photos[0] || null;
+  if (!activePhoto) {
+    return `
+      <section class="page page--post-detail page--photo-detail">
+        <header class="post-detail-topbar">
+          <button class="post-detail-topbar__button" type="button" data-close-photo-detail aria-label="Back">
+            ${getIcon('returnLeft')}
+          </button>
+          <strong class="post-detail-topbar__title">photo</strong>
+          <span class="post-detail-topbar__spacer" aria-hidden="true"></span>
+        </header>
+        <section class="empty-panel">
+          <p class="empty-panel__title">Photo not found</p>
+        </section>
+      </section>
+    `;
+  }
+  return `
+    <section class="page page--post-detail page--photo-detail">
+      <header class="post-detail-topbar">
+        <button class="post-detail-topbar__button" type="button" data-close-photo-detail aria-label="Back">
+          ${getIcon('returnLeft')}
+        </button>
+        <strong class="post-detail-topbar__title">photo</strong>
+        <span class="post-detail-topbar__spacer" aria-hidden="true"></span>
+      </header>
+      <div class="post-detail-feed">
+        ${photos.map((photo) => {
+          const dateText = escapeHtml(new Date(photo.createdAt || Date.now()).toLocaleDateString('ja-JP').replace(/\//g, '.'));
+          return `
+            <article class="post-detail-card post-detail-card--photo" ${photo.id === activePhoto.id ? 'data-photo-detail-active' : ''}>
+              <img class="post-detail-card__image post-detail-card__image--photo" src="${photo.imageData}" alt="" />
+              <div class="post-detail-card__content">
+                <p class="post-detail-card__time">${dateText}</p>
+              </div>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
 }
 
 function getRandomOpeningMemoryPost() {
@@ -741,6 +797,45 @@ async function syncPhotoAssetsFromSupabase(storageScope = uiState.albumPhotoScop
   }
 }
 
+async function syncAlbumPagesForCurrentConnection(storageScope = uiState.albumPageScope || 'shared') {
+  if (uiState.partnerProfile?.hasPartner) {
+    return syncCompletedPagesFromSupabase(storageScope);
+  }
+  const results = await Promise.allSettled([
+    syncCompletedPagesFromSupabase('personal'),
+    syncCompletedPagesFromSupabase('shared'),
+  ]);
+  return results.some((result) => result.status === 'fulfilled' && result.value);
+}
+
+async function syncPhotoAssetsForCurrentConnection(storageScope = uiState.albumPhotoScope || 'shared') {
+  if (uiState.partnerProfile?.hasPartner) {
+    return syncPhotoAssetsFromSupabase(storageScope);
+  }
+  const results = await Promise.allSettled([
+    listPhotoAssets({ storageScope: 'personal' }),
+    listPhotoAssets({ storageScope: 'shared' }),
+  ]);
+  const memoriesById = new Map();
+  let hasLoadedScope = false;
+  results.forEach((result) => {
+    if (result.status !== 'fulfilled') return;
+    hasLoadedScope = true;
+    (result.value || []).forEach((memory) => {
+      memoriesById.set(memory.id, memory);
+    });
+  });
+  if (hasLoadedScope) {
+    replaceRecordMemories(Array.from(memoriesById.values()));
+    return true;
+  }
+  const failed = results.find((result) => result.status === 'rejected');
+  if (failed) {
+    console.warn('Failed to load photo assets from Supabase. Using local cache.', failed.reason);
+  }
+  return false;
+}
+
 async function syncPartnerProfileFromSupabase() {
   if (!isSupabaseConfigured || uiState.authStatus !== 'authenticated') return false;
   uiState.partnerProfile = {
@@ -804,9 +899,11 @@ function renderShell() {
       shellClasses.push('app-shell--record-camera');
       screenAreaClasses.push('screen-area--record-camera');
     }
+  } else if (uiState.screen === 'magazine') {
+    screenAreaClasses.push('screen-area--magazine');
   } else if (uiState.screen === 'profile') {
     screenAreaClasses.push('screen-area--profile');
-  } else if (uiState.screen === 'post') {
+  } else if (uiState.screen === 'post' || uiState.screen === 'photo') {
     screenAreaClasses.push('screen-area--post');
   } else if (uiState.screen === 'invite') {
     screenAreaClasses.push('screen-area--invite');
@@ -828,7 +925,6 @@ function renderModals() {
   modalRoot.innerHTML = `
     ${renderCommentsModal(commentPost)}
     ${renderOpeningMemoryOverlay()}
-    ${renderPhotoPreviewOverlay()}
     ${renderPlusPlanModal()}
     ${renderRecordPostingOverlay()}
   `;
@@ -1140,6 +1236,16 @@ function openPostDetail(postId) {
   render();
 }
 
+function openPhotoDetail(photoId) {
+  if (!photoId) return;
+  uiState.photoReturnState = captureViewState();
+  uiState.screen = 'photo';
+  uiState.previewPhotoId = photoId;
+  uiState.commentPostId = null;
+  uiState.postDetailShouldScroll = true;
+  render();
+}
+
 function openPostEdit(postId) {
   const post = getActivePost(postId);
   if (!post || !isOwnPost(post)) return;
@@ -1310,6 +1416,13 @@ function closePostDetail() {
   uiState.profileEditOpen = false;
   uiState.profileAuthor = uiState.screen === 'profile' ? uiState.postReturnProfileAuthor : null;
   render();
+}
+
+function closePhotoDetail() {
+  const snapshot = uiState.photoReturnState;
+  uiState.photoReturnState = null;
+  uiState.previewPhotoId = null;
+  restoreViewState(snapshot, 'search');
 }
 
 function openSearchForTag(tag) {
@@ -2072,8 +2185,7 @@ function bindPostInteractions(scope = document) {
 
   scope.querySelectorAll('[data-open-photo-preview]').forEach((button) => {
     button.addEventListener('click', () => {
-      uiState.previewPhotoId = button.dataset.openPhotoPreview || null;
-      renderModals();
+      openPhotoDetail(button.dataset.openPhotoPreview);
     });
   });
 
@@ -2102,6 +2214,12 @@ function bindPostInteractions(scope = document) {
     uiState.postDetailShouldScroll = false;
     requestAnimationFrame(() => {
       document.querySelector('[data-post-detail-active]')?.scrollIntoView({ block: 'start' });
+    });
+  }
+  if (uiState.screen === 'photo' && uiState.postDetailShouldScroll) {
+    uiState.postDetailShouldScroll = false;
+    requestAnimationFrame(() => {
+      document.querySelector('[data-photo-detail-active]')?.scrollIntoView({ block: 'start' });
     });
   }
 }
@@ -2166,6 +2284,7 @@ function bindScreenScrollSurfaces() {
     document.querySelector('.timeline-feed'),
     document.querySelector('.screen-area--profile'),
     document.querySelector('.screen-area--search'),
+    document.querySelector('.screen-area--magazine'),
     document.querySelector('.screen-area--post'),
   ].forEach((element) => bindDragScrollSurface(element, 'y'));
 }
@@ -2324,6 +2443,16 @@ function bindTimelineEvents() {
 function bindSearchEvents() {
   bindPostInteractions(document.getElementById('screenArea'));
   bindScreenScrollSurfaces();
+  const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
+  if (!hasPartner) {
+    uiState.albumPageScope = 'personal';
+    uiState.albumPhotoScope = 'personal';
+    document.querySelectorAll('[data-album-page-scope="shared"], [data-album-photo-scope="shared"]').forEach((button) => {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.classList.add('is-disabled');
+    });
+  }
 
   const ensureDateAddDraft = () => ({
     date: uiState.selectedCalendarDate || getTodayDateKey(),
@@ -2372,7 +2501,7 @@ function bindSearchEvents() {
       uiState.albumTab = button.dataset.albumTab === 'photo' ? 'photo' : 'pages';
       uiState.coupleView = 'pageList';
       if (uiState.albumTab === 'photo') {
-        await syncPhotoAssetsFromSupabase(uiState.albumPhotoScope || 'shared');
+        await syncPhotoAssetsForCurrentConnection(uiState.albumPhotoScope || (hasPartner ? 'shared' : 'personal'));
       }
       renderScreen();
     });
@@ -2380,20 +2509,22 @@ function bindSearchEvents() {
 
   document.querySelectorAll('[data-album-page-scope]').forEach((button) => {
     button.addEventListener('click', async () => {
+      if (!hasPartner && button.dataset.albumPageScope === 'shared') return;
       uiState.albumPageScope = button.dataset.albumPageScope === 'personal' ? 'personal' : 'shared';
       uiState.albumTab = 'pages';
       uiState.coupleView = 'pageList';
-      await syncCompletedPagesFromSupabase(uiState.albumPageScope);
+      await syncAlbumPagesForCurrentConnection(uiState.albumPageScope);
       renderScreen();
     });
   });
 
   document.querySelectorAll('[data-album-photo-scope]').forEach((button) => {
     button.addEventListener('click', async () => {
+      if (!hasPartner && button.dataset.albumPhotoScope === 'shared') return;
       uiState.albumPhotoScope = button.dataset.albumPhotoScope === 'personal' ? 'personal' : 'shared';
       uiState.albumTab = 'photo';
       uiState.coupleView = 'pageList';
-      await syncPhotoAssetsFromSupabase(uiState.albumPhotoScope);
+      await syncPhotoAssetsForCurrentConnection(uiState.albumPhotoScope);
       renderScreen();
     });
   });
@@ -2709,10 +2840,12 @@ function bindScreenNavigationEvents() {
   document.querySelectorAll('[data-home-nav]').forEach((button) => {
     button.addEventListener('click', async () => {
       if (button.hasAttribute('data-bottom-album')) {
+        const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
+        const albumPageScope = hasPartner ? (uiState.albumPageScope || 'shared') : 'personal';
         uiState.coupleView = 'pageList';
         uiState.albumTab = 'pages';
-        uiState.albumPageScope = uiState.albumPageScope || 'shared';
-        await syncCompletedPagesFromSupabase(uiState.albumPageScope);
+        uiState.albumPageScope = albumPageScope;
+        await syncAlbumPagesForCurrentConnection(albumPageScope);
       }
       navigate(button.dataset.homeNav);
     });
@@ -8722,6 +8855,7 @@ function bindRecordEvents() {
       place: document.querySelector('[data-record-place]')?.value || draft.place || '',
       memo: document.querySelector('[data-record-memo]')?.value || draft.memo || '',
       sourceType: draft.sourceType || 'album',
+      storageScope: uiState.recordSaveScope || 'shared',
     };
     let saved = null;
     try {
@@ -9036,8 +9170,8 @@ function bindProfileEvents() {
           uiState.albumPageScope = 'personal';
           uiState.albumPhotoScope = 'personal';
           await Promise.all([
-            syncPhotoAssetsFromSupabase('personal'),
-            syncCompletedPagesFromSupabase('personal'),
+            syncPhotoAssetsForCurrentConnection('personal'),
+            syncAlbumPagesForCurrentConnection('personal'),
           ]);
           uiState.profileSection = 'settings';
           uiState.settingsConfirmStep = 1;
@@ -9076,15 +9210,16 @@ function bindProfileEvents() {
 
   document.querySelectorAll('[data-open-pages-list]').forEach((button) => {
     button.addEventListener('click', async () => {
+      const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
       uiState.coupleView = 'pageList';
-      uiState.albumPageScope = uiState.albumPageScope || 'shared';
-      uiState.albumPhotoScope = uiState.albumPhotoScope || 'shared';
+      uiState.albumPageScope = hasPartner ? (uiState.albumPageScope || 'shared') : 'personal';
+      uiState.albumPhotoScope = hasPartner ? (uiState.albumPhotoScope || 'shared') : 'personal';
       uiState.screen = 'search';
       if (uiState.albumTab === 'photo') {
-        await syncPhotoAssetsFromSupabase(uiState.albumPhotoScope);
+        await syncPhotoAssetsForCurrentConnection(uiState.albumPhotoScope);
       } else {
         uiState.albumTab = 'pages';
-        await syncCompletedPagesFromSupabase(uiState.albumPageScope);
+        await syncAlbumPagesForCurrentConnection(uiState.albumPageScope);
       }
       render();
     });
@@ -9581,6 +9716,15 @@ function bindAuthEvents() {
   });
 }
 
+function bindPhotoDetailEvents() {
+  bindScreenScrollSurfaces();
+  document.querySelectorAll('[data-close-photo-detail]').forEach((button) => {
+    button.addEventListener('click', () => {
+      closePhotoDetail();
+    });
+  });
+}
+
 function bindModalEvents() {
   document.querySelectorAll('[data-close-preview]').forEach((element) => {
     element.addEventListener('click', () => {
@@ -9683,6 +9827,9 @@ function bindPageEvents() {
     case 'post':
       bindPostDetailEvents();
       break;
+    case 'photo':
+      bindPhotoDetailEvents();
+      break;
     default:
       break;
   }
@@ -9736,8 +9883,8 @@ async function initializeAuth() {
     if (data.session?.user) {
       await syncPartnerProfileFromSupabase();
       await Promise.all([
-        syncCompletedPagesFromSupabase(),
-        syncPhotoAssetsFromSupabase(),
+        syncAlbumPagesForCurrentConnection(),
+        syncPhotoAssetsForCurrentConnection(),
       ]);
     }
   } catch (error) {
@@ -9754,8 +9901,8 @@ async function initializeAuth() {
       applyInviteRouteFromUrl();
       syncPartnerProfileFromSupabase()
         .then(() => Promise.all([
-          syncCompletedPagesFromSupabase(),
-          syncPhotoAssetsFromSupabase(),
+          syncAlbumPagesForCurrentConnection(),
+          syncPhotoAssetsForCurrentConnection(),
         ]))
         .finally(() => render());
       return;
