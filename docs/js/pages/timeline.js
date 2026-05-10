@@ -65,6 +65,14 @@ function getPostsForDate(state = {}, dateString = '') {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+function escapeCalendarText(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function renderSelectedDatePages(posts = []) {
   const post = posts[0];
   if (!post) {
@@ -73,11 +81,26 @@ function renderSelectedDatePages(posts = []) {
 
   const title = getPostTitle(post);
   return `
-    <button class="couple-selected-date__page" type="button" data-open-preview="${post.id}" aria-label="selected page">
+    <button class="couple-selected-date__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
       ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
     </button>
   `;
 }
+
+function renderDateActions(entry) {
+  if (!entry?.id) return '';
+  return `
+    <div class="couple-list-actions couple-date-card-actions">
+      <button type="button" data-home-edit-date-entry="${entry.id}" aria-label="予定を編集">
+        ${getIcon('editLine')}
+      </button>
+      <button class="is-danger" type="button" data-home-delete-date-entry="${entry.id}" aria-label="予定を削除">
+        ${getIcon('trashLine')}
+      </button>
+    </div>
+  `;
+}
+
 function renderNextDateButton(couple = {}) {
   const nextEntry = (couple.calendarEntries || []).find((entry) => entry.id === couple.nextDateId)
     || (couple.calendarEntries || [])[0];
@@ -107,6 +130,7 @@ function renderNextDateButton(couple = {}) {
       <p>${title}</p>
       <p>${time}</p>
       <p>${place}</p>
+      ${renderDateActions(nextEntry)}
     </article>
   `;
 }
@@ -136,9 +160,11 @@ function renderSelectedDateInfo(couple = {}, selectedDate = '') {
       <p>${entry.title || 'ふたりの予定'}</p>
       <p>${entry.time || '時間未設定'}</p>
       <p>${entry.place || '場所未設定'}</p>
+      ${renderDateActions(entry)}
     </article>
   `;
 }
+
 function renderCalendarDynamic(couple = {}, selectedDate = '') {
   const nextEntry = (couple.calendarEntries || []).find((entry) => entry.id === couple.nextDateId)
     || (couple.calendarEntries || [])[0];
@@ -173,9 +199,6 @@ function renderCalendarDynamic(couple = {}, selectedDate = '') {
           `;
         }).join('')}
       </div>
-      <button class="couple-add-date-fab" type="button" aria-label="デートを追加" data-open-date-add>
-        <span aria-hidden="true">+</span>
-      </button>
     </section>
   `;
 }
@@ -185,7 +208,7 @@ function renderSelectedDatePlan(state = {}, couple = {}, selectedDate = '') {
   const posts = getPostsForDate(state, dateKey);
 
   return `
-    <section class="couple-selected-date-row" aria-label="selected date and next date">
+    <section class="couple-selected-date-row" aria-label="選択した日と次のデート">
       <article class="couple-selected-date couple-card">
         ${renderSelectedDatePages(posts)}
       </article>
@@ -196,6 +219,121 @@ function renderSelectedDatePlan(state = {}, couple = {}, selectedDate = '') {
     </section>
   `;
 }
+
+function renderCalendarDatePopup(state = {}, uiState = {}) {
+  const popupDate = uiState.calendarPopupDate || '';
+  if (!popupDate) return '';
+  const entries = (state.couple?.calendarEntries || []).filter((entry) => entry.date === popupDate);
+  const posts = getPostsForDate(state, popupDate);
+  const date = new Date(`${popupDate}T00:00:00`);
+  const dateLabel = !Number.isNaN(date.getTime())
+    ? `${date.getMonth() + 1}/${date.getDate()} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}`
+    : popupDate;
+
+  return `
+    <div class="calendar-date-popover" role="dialog" aria-modal="false" aria-label="選択日の予定">
+      <div class="calendar-date-popover__panel">
+        <div class="calendar-date-popover__head">
+          <div>
+            <p class="couple-kicker">${dateLabel}</p>
+            <h2>この日の予定</h2>
+          </div>
+          <button type="button" data-calendar-popup-close aria-label="閉じる">×</button>
+        </div>
+        ${entries.length ? `
+          <div class="calendar-date-popover__list">
+            ${entries.map((entry) => `
+              <article class="calendar-date-popover__entry">
+                <h3>${escapeCalendarText(entry.title || 'ふたりの予定')}</h3>
+                <dl>
+                  <div><dt>場所</dt><dd>${escapeCalendarText(entry.place || '未設定')}</dd></div>
+                  <div><dt>時間</dt><dd>${escapeCalendarText(entry.time || '未設定')}</dd></div>
+                </dl>
+                ${entry.note ? `<p>${escapeCalendarText(entry.note)}</p>` : ''}
+                ${renderDateActions(entry)}
+              </article>
+            `).join('')}
+          </div>
+        ` : `
+          <p class="calendar-date-popover__empty">予定はまだありません。</p>
+        `}
+        ${posts.length ? `
+          <section class="calendar-date-popover__pages" aria-label="この日のページ">
+            <h3>この日のページ</h3>
+            <div class="calendar-date-popover__page-grid">
+              ${posts.map((post) => {
+                const title = escapeCalendarText(getPostTitle(post));
+                return `
+                  <button class="calendar-date-popover__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
+                    ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
+                    <strong>${title}</strong>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </section>
+        ` : ''}
+        <div class="calendar-date-popover__footer">
+          <span>作成済みページ ${posts.length}</span>
+          <button type="button" data-open-date-add>予定を追加</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderHomeTodoRows(todos = []) {
+  const visibleTodos = todos
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 3);
+
+  if (!visibleTodos.length) {
+    return '<p class="futari-dashboard-todo__empty">やりたいことを追加してください</p>';
+  }
+
+  return visibleTodos.map((todo) => {
+    const title = escapeCalendarText(todo.title || 'やりたいこと');
+    return `
+      <button class="futari-dashboard-todo__row ${todo.done ? 'is-done' : ''}" type="button" data-profile-toggle-todo="${escapeCalendarText(todo.id)}">
+        <span class="futari-dashboard-todo__check" aria-hidden="true">${todo.done ? getIcon('check') : ''}</span>
+        <span class="futari-dashboard-todo__title">${title}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function renderHomeQuickCards(couple = {}) {
+  const todos = couple.todos || [];
+  return `
+    <section class="couple-home-quick">
+      <section class="futari-dashboard-todo futari-dashboard-card couple-home-quick__todo">
+        <div class="futari-dashboard-section-head">
+          <h2>やりたいこと</h2>
+          <button type="button" data-open-todo-list aria-label="やりたいことリストを開く">${getIcon('chevronRight')}</button>
+        </div>
+        <div class="futari-dashboard-todo__list">
+          ${renderHomeTodoRows(todos)}
+        </div>
+        <button class="futari-dashboard-add" type="button" data-profile-open-todo-list>
+          <span>+</span>
+          追加する
+        </button>
+      </section>
+      <section class="couple-card couple-home-actions-card" aria-label="ホーム操作">
+        <button class="couple-home-action-button" type="button" data-open-date-add>
+          <span class="couple-home-action-button__icon">${getIcon('compose')}</span>
+          <strong>デート追加</strong>
+        </button>
+        <button class="couple-home-action-button" type="button" data-home-open-camera>
+          <span class="couple-home-action-button__icon">${getIcon('camera')}</span>
+          <strong>カメラ起動</strong>
+        </button>
+      </section>
+    </section>
+  `;
+}
+
 export function renderHome(state, uiState = {}) {
   const selectedDate = uiState.selectedCalendarDate || getTodayDateKey();
   return `
@@ -203,7 +341,8 @@ export function renderHome(state, uiState = {}) {
       <div class="couple-screen">
         ${renderBrand()}
         ${renderCalendarDynamic(state.couple || {}, selectedDate)}
-        ${renderSelectedDatePlan(state, state.couple || {}, selectedDate)}
+        ${renderHomeQuickCards(state.couple || {})}
+        ${renderCalendarDatePopup(state, uiState)}
       </div>
     </section>
   `;

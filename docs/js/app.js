@@ -2507,7 +2507,35 @@ function bindTimelineEvents() {
       uiState.dateAddDraft = {
         date: uiState.selectedCalendarDate || getTodayDateKey(),
       };
+      uiState.calendarPopupDate = null;
       uiState.screen = 'search';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-home-open-camera]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const recordDate = uiState.selectedCalendarDate || getTodayDateKey();
+      const time = new Date().toTimeString().slice(0, 5);
+      uiState.recordDate = recordDate;
+      uiState.recordStage = 'camera';
+      uiState.recordDraft = {
+        imageData: '',
+        time,
+        createdAt: `${recordDate}T${time}:00`,
+        place: '',
+        memo: '',
+        filter: 'none',
+        facingMode: 'environment',
+        frame: 'landscape',
+        zoom: 1,
+        reviewConfirmed: false,
+      };
+      uiState.recordEditingId = null;
+      uiState.recordSelectedIds = [];
+      uiState.recordBackgroundId = DEFAULT_RECORD_BACKGROUND;
+      uiState.recordPhotoFeather = true;
+      uiState.screen = 'record';
       render();
     });
   });
@@ -2530,6 +2558,7 @@ function bindTimelineEvents() {
     button.addEventListener('click', () => {
       const delta = Number(button.dataset.homeCalendarMonth) || 0;
       uiState.selectedCalendarDate = shiftDateKeyMonth(uiState.selectedCalendarDate || getTodayDateKey(), delta);
+      uiState.calendarPopupDate = null;
       renderScreen();
     });
   });
@@ -2537,6 +2566,71 @@ function bindTimelineEvents() {
   document.querySelectorAll('[data-home-calendar-date]').forEach((button) => {
     button.addEventListener('click', () => {
       uiState.selectedCalendarDate = button.dataset.homeCalendarDate || getTodayDateKey();
+      uiState.calendarPopupDate = uiState.selectedCalendarDate;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-calendar-popup-close]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.calendarPopupDate = null;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-home-edit-date-entry]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const entryId = button.dataset.homeEditDateEntry;
+      const entry = (getState().couple?.calendarEntries || []).find((item) => item.id === entryId);
+      if (!entry) return;
+      uiState.dateEditingId = entry.id;
+      uiState.selectedCalendarDate = entry.date || uiState.selectedCalendarDate || getTodayDateKey();
+      uiState.dateAddDraft = createDateDraftFromEntry(entry);
+      uiState.dateAddStep = 1;
+      uiState.coupleView = 'dateAdd';
+      uiState.calendarPopupDate = null;
+      uiState.screen = 'search';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-home-delete-date-entry]').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const entryId = button.dataset.homeDeleteDateEntry;
+      deleteCoupleCalendarEntry(entryId);
+      await deleteCoupleCalendarEntryFromSupabase(entryId);
+      await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
+      uiState.calendarPopupDate = null;
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-open-todo-list]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.coupleView = 'todoList';
+      uiState.todoInputOpen = false;
+      uiState.screen = 'search';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-open-todo-list]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.coupleView = 'todoList';
+      uiState.todoInputOpen = true;
+      uiState.screen = 'search';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-profile-toggle-todo]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const todoId = button.dataset.profileToggleTodo;
+      toggleCoupleTodo(todoId);
+      const todo = (getState().couple?.todos || []).find((item) => item.id === todoId);
+      persistCoupleTodoToSupabase(todo);
       renderScreen();
     });
   });
@@ -2627,7 +2721,7 @@ function bindSearchEvents() {
     date: uiState.selectedCalendarDate || getTodayDateKey(),
     timeOfDay: 'noon',
     startTime: '11:00',
-    endTime: '13:30',
+    endTime: '',
     type: 'cafe',
     title: '',
     place: '',
@@ -2661,6 +2755,7 @@ function bindSearchEvents() {
         uiState.dateEditingId = null;
         uiState.dateAddStep = Number(button.dataset.dateAddStep) || uiState.dateAddStep || 1;
         updateDateAddDraft({ date: uiState.selectedCalendarDate || ensureDateAddDraft().date });
+        uiState.calendarPopupDate = null;
       }
       renderScreen();
     });
@@ -2676,6 +2771,7 @@ function bindSearchEvents() {
       uiState.dateAddDraft = createDateDraftFromEntry(entry);
       uiState.dateAddStep = 1;
       uiState.coupleView = 'dateAdd';
+      uiState.calendarPopupDate = null;
       renderScreen();
     });
   });
@@ -2756,8 +2852,16 @@ function bindSearchEvents() {
   document.querySelectorAll('[data-calendar-date]').forEach((button) => {
     button.addEventListener('click', () => {
       uiState.selectedCalendarDate = button.dataset.calendarDate || getTodayDateKey();
+      uiState.calendarPopupDate = uiState.selectedCalendarDate;
       updateDateAddDraft({ date: uiState.selectedCalendarDate });
       uiState.coupleView = 'calendar';
+      renderScreen();
+    });
+  });
+
+  document.querySelectorAll('[data-calendar-popup-close]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.calendarPopupDate = null;
       renderScreen();
     });
   });
@@ -2775,6 +2879,7 @@ function bindSearchEvents() {
     button.addEventListener('click', () => {
       const delta = Number(button.dataset.calendarMonth) || 0;
       uiState.selectedCalendarDate = shiftDateKeyMonth(uiState.selectedCalendarDate || getTodayDateKey(), delta);
+      uiState.calendarPopupDate = null;
       updateDateAddDraft({ date: uiState.selectedCalendarDate });
       uiState.coupleView = 'calendar';
       renderScreen();
@@ -2828,7 +2933,7 @@ function bindSearchEvents() {
           note: String(formData.get('note') || ensureDateAddDraft().note).trim(),
         });
       }
-      uiState.dateAddStep = Math.min(3, (Number(uiState.dateAddStep) || 1) + 1);
+      uiState.dateAddStep = Math.min(2, (Number(uiState.dateAddStep) || 1) + 1);
       uiState.coupleView = 'dateAdd';
       renderScreen();
     });
@@ -2859,19 +2964,18 @@ function bindSearchEvents() {
       const formData = new FormData(form);
       const draft = ensureDateAddDraft();
       updateDateAddDraft({
-        title: String(formData.get('title') || draft.title).trim(),
+        startTime: String(formData.get('startTime') || draft.startTime).trim(),
         place: String(formData.get('place') || draft.place).trim(),
-        note: String(formData.get('note') || draft.note).trim(),
       });
       const finalDraft = ensureDateAddDraft();
       const entryInput = {
         planId: '',
-        title: finalDraft.title || 'ふたりのデート',
+        title: finalDraft.place || finalDraft.title || 'ふたりのデート',
         date: finalDraft.date,
-        time: `${finalDraft.startTime}〜${finalDraft.endTime}`,
+        time: finalDraft.startTime || '未定',
         place: finalDraft.place,
-        note: finalDraft.note,
-        tags: [finalDraft.type, finalDraft.timeOfDay].filter(Boolean),
+        note: '',
+        tags: [],
       };
       const entry = uiState.dateEditingId
         ? updateCoupleCalendarEntry(uiState.dateEditingId, entryInput)
