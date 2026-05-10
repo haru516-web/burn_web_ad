@@ -2503,7 +2503,7 @@ function bindTimelineEvents() {
   document.querySelectorAll('[data-open-date-add]').forEach((button) => {
     button.addEventListener('click', () => {
       uiState.coupleView = 'dateAdd';
-      uiState.dateAddStep = 1;
+      uiState.dateAddStep = 2;
       uiState.dateAddDraft = {
         date: uiState.selectedCalendarDate || getTodayDateKey(),
       };
@@ -2587,7 +2587,7 @@ function bindTimelineEvents() {
       uiState.dateEditingId = entry.id;
       uiState.selectedCalendarDate = entry.date || uiState.selectedCalendarDate || getTodayDateKey();
       uiState.dateAddDraft = createDateDraftFromEntry(entry);
-      uiState.dateAddStep = 1;
+      uiState.dateAddStep = 2;
       uiState.coupleView = 'dateAdd';
       uiState.calendarPopupDate = null;
       uiState.screen = 'search';
@@ -2761,6 +2761,16 @@ function bindSearchEvents() {
     });
   });
 
+  document.querySelectorAll('[data-open-date-add]').forEach((button) => {
+    button.addEventListener('click', () => {
+      uiState.coupleView = 'dateAdd';
+      uiState.dateAddStep = 2;
+      updateDateAddDraft({ date: uiState.selectedCalendarDate || ensureDateAddDraft().date });
+      uiState.calendarPopupDate = null;
+      renderScreen();
+    });
+  });
+
   document.querySelectorAll('[data-edit-date-entry]').forEach((button) => {
     button.addEventListener('click', () => {
       const entryId = button.dataset.editDateEntry;
@@ -2769,7 +2779,7 @@ function bindSearchEvents() {
       uiState.dateEditingId = entry.id;
       uiState.selectedCalendarDate = entry.date || uiState.selectedCalendarDate || getTodayDateKey();
       uiState.dateAddDraft = createDateDraftFromEntry(entry);
-      uiState.dateAddStep = 1;
+      uiState.dateAddStep = 2;
       uiState.coupleView = 'dateAdd';
       uiState.calendarPopupDate = null;
       renderScreen();
@@ -2966,6 +2976,7 @@ function bindSearchEvents() {
       updateDateAddDraft({
         startTime: String(formData.get('startTime') || draft.startTime).trim(),
         place: String(formData.get('place') || draft.place).trim(),
+        note: String(formData.get('note') || draft.note).trim(),
       });
       const finalDraft = ensureDateAddDraft();
       const entryInput = {
@@ -2974,7 +2985,7 @@ function bindSearchEvents() {
         date: finalDraft.date,
         time: finalDraft.startTime || '未定',
         place: finalDraft.place,
-        note: '',
+        note: finalDraft.note,
         tags: [],
       };
       const entry = uiState.dateEditingId

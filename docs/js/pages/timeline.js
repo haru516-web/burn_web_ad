@@ -266,7 +266,6 @@ function renderCalendarDatePopup(state = {}, uiState = {}) {
                 return `
                   <button class="calendar-date-popover__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
                     ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
-                    <strong>${title}</strong>
                   </button>
                 `;
               }).join('')}
@@ -275,7 +274,7 @@ function renderCalendarDatePopup(state = {}, uiState = {}) {
         ` : ''}
         <div class="calendar-date-popover__footer">
           <span>作成済みページ ${posts.length}</span>
-          <button type="button" data-open-date-add>予定を追加</button>
+          ${entries.length ? '' : '<button type="button" data-open-date-add>予定を追加</button>'}
         </div>
       </div>
     </div>
@@ -321,13 +320,8 @@ function renderHomeQuickCards(couple = {}) {
         </button>
       </section>
       <section class="couple-card couple-home-actions-card" aria-label="ホーム操作">
-        <button class="couple-home-action-button" type="button" data-open-date-add>
-          <span class="couple-home-action-button__icon">${getIcon('compose')}</span>
-          <strong>デート追加</strong>
-        </button>
         <button class="couple-home-action-button" type="button" data-home-open-camera>
           <span class="couple-home-action-button__icon">${getIcon('camera')}</span>
-          <strong>カメラ起動</strong>
         </button>
       </section>
     </section>

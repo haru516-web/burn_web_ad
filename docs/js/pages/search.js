@@ -156,6 +156,14 @@ function getPostsForDate(state, dateString) {
   return (state.posts || []).filter((post) => getPostDateKey(post) === dateString);
 }
 
+function escapeCalendarText(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function getCoupleRecommendations(couple = {}) {
   const values = [
     ...Object.values(couple.answers?.you || {}),
@@ -221,7 +229,7 @@ function getDateAddDraft(uiState = {}) {
     date: uiState.selectedCalendarDate || getTodayDateKey(),
     timeOfDay: 'noon',
     startTime: '11:00',
-    endTime: '13:30',
+    endTime: '',
     type: 'cafe',
     title: '',
     place: '',
@@ -243,7 +251,66 @@ function renderDateAddProgress(step) {
     <div class="date-add-progress" aria-label="追加ステップ">
       <span class="${step >= 1 ? 'is-active' : ''}"></span>
       <span class="${step >= 2 ? 'is-active' : ''}"></span>
-      <span class="${step >= 3 ? 'is-active' : ''}"></span>
+    </div>
+  `;
+}
+
+function renderCalendarDatePopup(state, uiState) {
+  const popupDate = uiState.calendarPopupDate || '';
+  if (!popupDate) return '';
+  const entries = getEntriesForDate(state, popupDate);
+  const pages = getPostsForDate(state, popupDate);
+
+  return `
+    <div class="calendar-date-popover" role="dialog" aria-modal="false" aria-label="選択日の予定">
+      <div class="calendar-date-popover__panel">
+        <div class="calendar-date-popover__head">
+          <div>
+            <p class="couple-kicker">${formatDateLabel(popupDate)}</p>
+            <h2>この日の予定</h2>
+          </div>
+          <button type="button" data-calendar-popup-close aria-label="閉じる">×</button>
+        </div>
+        ${entries.length ? `
+          <div class="calendar-date-popover__list">
+            ${entries.map((entry) => `
+              <article class="calendar-date-popover__entry">
+                <h3>${escapeCalendarText(entry.title || 'ふたりの予定')}</h3>
+                <dl>
+                  <div><dt>場所</dt><dd>${escapeCalendarText(entry.place || '未設定')}</dd></div>
+                  <div><dt>時間</dt><dd>${escapeCalendarText(entry.time || '未設定')}</dd></div>
+                </dl>
+                ${entry.note ? `<p>${escapeCalendarText(entry.note)}</p>` : ''}
+                <div class="calendar-date-popover__actions">
+                  <button type="button" data-edit-date-entry="${entry.id}">編集</button>
+                  <button class="is-danger" type="button" data-delete-date-entry="${entry.id}">削除</button>
+                </div>
+              </article>
+            `).join('')}
+          </div>
+        ` : `
+          <p class="calendar-date-popover__empty">予定はまだありません。</p>
+        `}
+        ${pages.length ? `
+          <section class="calendar-date-popover__pages" aria-label="この日のページ">
+            <h3>この日のページ</h3>
+            <div class="calendar-date-popover__page-grid">
+              ${pages.map((post) => {
+                const title = escapeCalendarText(getPostTitle(post));
+                return `
+                  <button class="calendar-date-popover__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
+                    ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </section>
+        ` : ''}
+        <div class="calendar-date-popover__footer">
+          <span>作成済みページ ${pages.length}</span>
+          ${entries.length ? '' : '<button type="button" data-open-date-add>予定を追加</button>'}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -287,55 +354,35 @@ function renderDateAddCalendar(uiState) {
 
 function renderDateAddDetails(uiState) {
   const draft = getDateAddDraft(uiState);
-  const timeOptions = [
-    ['morning', '午前', '☼'],
-    ['noon', '昼から', '●'],
-    ['evening', '夕方', '◐'],
-    ['night', '夜', '☾'],
-    ['unknown', '未定', '…'],
-  ];
-  const typeOptions = [
-    ['cafe', 'カフェ', '☕'],
-    ['dinner', '夜ごはん', '♨'],
-    ['walk', 'さんぽ', '♙'],
-    ['home', 'おうち', '⌂'],
-  ];
+  const dateLabel = formatDateLabel(draft.date);
   return `
     ${renderBrand()}
     <header class="date-add-title">
-      <p>STEP 2</p>
-      <h1>時間とデートタイプ</h1>
+      <p>${dateLabel}</p>
+      <h1>予定を追加</h1>
     </header>
-    ${renderDateAddProgress(2)}
-    <form class="date-add-form" data-date-add-time-form>
-      <section class="couple-card date-add-card">
-        <h2>何時くらいに会う？</h2>
-        <div class="date-add-options date-add-options--five">
-          ${timeOptions.map(([value, label, icon]) => `
-            <button class="${draft.timeOfDay === value ? 'is-selected' : ''}" type="button" data-date-add-timeofday="${value}">
-              <span>${icon}</span>${label}
-            </button>
-          `).join('')}
-        </div>
-        <div class="date-add-time-row">
-          <label>開始時間<select name="startTime">${renderTimeOptions(draft.startTime)}</select></label>
-          <span>〜</span>
-          <label>終了時間<select name="endTime">${renderTimeOptions(draft.endTime)}</select></label>
-        </div>
+    <form class="date-add-form" data-date-add-form>
+      <section class="couple-card date-add-field-card">
+        <label>
+          <span>開始時間</span>
+          <select name="startTime">${renderTimeOptions(draft.startTime)}</select>
+        </label>
       </section>
-      <section class="couple-card date-add-card">
-        <h2>どんなデート？</h2>
-        <div class="date-add-options">
-          ${typeOptions.map(([value, label, icon]) => `
-            <button class="${draft.type === value ? 'is-selected' : ''}" type="button" data-date-add-type="${value}">
-              <span>${icon}</span>${label}
-            </button>
-          `).join('')}
-        </div>
+      <section class="couple-card date-add-field-card">
+        <label>
+          <span>場所</span>
+          <input name="place" value="${escapeDateAddText(draft.place)}" maxlength="40" placeholder="代官山カフェ" />
+        </label>
+      </section>
+      <section class="couple-card date-add-field-card">
+        <label>
+          <span>メモ</span>
+          <textarea name="note" maxlength="120" placeholder="待ち合わせや持ち物など">${escapeDateAddText(draft.note)}</textarea>
+        </label>
       </section>
       <div class="date-add-actions">
-        <button type="button" data-date-add-back>戻る</button>
-        <button type="button" data-date-add-next>次へ</button>
+        <button type="button" data-date-add-cancel>戻る</button>
+        <button type="submit">完了</button>
       </div>
     </form>
   `;
@@ -384,10 +431,7 @@ function renderDateAddText(uiState) {
 }
 
 function renderDateAdd(state, uiState) {
-  const step = Number(uiState.dateAddStep) || 1;
-  if (step === 2) return renderDateAddDetails(uiState);
-  if (step === 3) return renderDateAddText(uiState);
-  return renderDateAddCalendar(uiState);
+  return renderDateAddDetails(uiState);
 }
 
 function renderDateDetail(state, uiState) {
@@ -407,7 +451,6 @@ function renderDateDetail(state, uiState) {
           <strong>${pages.length}</strong>
         </div>
         <div class="couple-date-detail__actions">
-          <button type="button" data-couple-view="dateAdd" data-date-add-step="1">デートを追加</button>
           <button type="button" data-home-nav="compose">ページを作る</button>
         </div>
       </section>
@@ -494,11 +537,6 @@ function renderDateList(state, uiState = {}) {
             <p class="couple-kicker">予定一覧</p>
             <h2>${activeTab === 'past' ? '済みの予定はまだありません' : 'これからの予定はまだありません'}</h2>
             <p>${activeTab === 'past' ? '日付が過ぎた予定がここに表示されます。' : 'デートを追加すると、ここに一覧で表示されます。'}</p>
-            ${activeTab === 'upcoming' ? `
-              <div class="couple-date-detail__actions">
-                <button type="button" data-couple-view="dateAdd" data-date-add-step="1">デートを追加</button>
-              </div>
-            ` : ''}
           </section>
         `}
     </section>
@@ -949,8 +987,8 @@ function renderRecommendations(state) {
 function renderCalendar(state, uiState) {
   return `
     ${renderBrand()}
-    <button class="date-add-entry-button" type="button" data-couple-view="dateAdd" data-date-add-step="1">デートを追加</button>
     ${renderCalendarGrid(state, uiState)}
+    ${renderCalendarDatePopup(state, uiState)}
     ${renderDateDetail(state, uiState)}
     <section class="couple-card couple-question-entry">
       <div>
