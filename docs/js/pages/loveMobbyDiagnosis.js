@@ -1,4 +1,5 @@
 import { getIcon } from '../components/icons.js';
+import compatibilitySource from '../../../love_mobby_compatibility_136.md?raw';
 
 export const LOVE_MOBBY_STORAGE_KEY = 'love_mobby_diag_v1';
 export const PAGE_SIZE = 5;
@@ -141,6 +142,8 @@ export const RESULT_TYPES = {
   SFAC: { code: 'SFAC', typeName: '静かな港の相棒', characterName: '静かな港の相棒モビー', shortCopy: '自由と安心、そして二人だけの信頼を長く育てるタイプ。' },
 };
 
+const RESULT_TYPE_ORDER = Object.keys(RESULT_TYPES);
+
 const axisDualCopy = {
   A: '愛されたい気持ちも、相手を支えたい気持ちも強いタイプ。恋の主役でいたいだけではなく、相手の幸せも自分の幸せとして感じやすいです。',
   B: '離したくない気持ちも、自分の時間を守りたい気持ちもあります。寂しがりだけど、ずっと近すぎると疲れることもあるタイプです。',
@@ -182,6 +185,48 @@ const typeGuideRows = [
     rightLabel: 'Close / 内にしまう恋型',
   },
 ];
+
+function normalizeCompatibilityPair(firstCode, secondCode) {
+  const firstIndex = RESULT_TYPE_ORDER.indexOf(firstCode);
+  const secondIndex = RESULT_TYPE_ORDER.indexOf(secondCode);
+  if (firstIndex < 0 || secondIndex < 0) return '';
+  return firstIndex <= secondIndex ? `${firstCode}|${secondCode}` : `${secondCode}|${firstCode}`;
+}
+
+function parseCompatibilitySource(source) {
+  const entries = {};
+  let currentCode = '';
+
+  source.split(/\r?\n/).forEach((line) => {
+    const sectionMatch = line.match(/^##\s+([A-Z]{4}):/);
+    if (sectionMatch) {
+      currentCode = sectionMatch[1];
+      return;
+    }
+
+    const entryMatch = line.match(/^- \*\*([A-Z]{4}): ([^*]+)\*\*｜([^｜]+)｜良い: ([^｜]+)｜注意: ([^｜]+)｜改善: (.+)$/);
+    if (!currentCode || !entryMatch) return;
+
+    const [, partnerCode, partnerName, stars, good, caution, improvement] = entryMatch;
+    entries[normalizeCompatibilityPair(currentCode, partnerCode)] = {
+      firstCode: currentCode,
+      secondCode: partnerCode,
+      partnerName,
+      stars,
+      good: good.split('・').map((text) => text.trim()).filter(Boolean),
+      caution: caution.split('・').map((text) => text.trim()).filter(Boolean),
+      improvement: improvement.split('；').map((text) => text.trim()).filter(Boolean),
+    };
+  });
+
+  return entries;
+}
+
+const COMPATIBILITY_TABLE = parseCompatibilitySource(compatibilitySource);
+
+function getCompatibilityResult(firstCode, secondCode) {
+  return COMPATIBILITY_TABLE[normalizeCompatibilityPair(firstCode, secondCode)] || null;
+}
 
 const typeDetails = {
   heroine: {
@@ -463,6 +508,7 @@ function renderDiagnosisActions() {
     <nav class="love-diagnosis-tabs" aria-label="診断メニュー">
       <button class="love-diagnosis-tabs__item is-active" type="button" data-love-tab-diagnosis>診断</button>
       <button class="love-diagnosis-tabs__item" type="button" data-love-character-list>キャラ一覧</button>
+      <button class="love-diagnosis-tabs__item" type="button" data-love-compatibility>相性を見る</button>
       <button class="love-diagnosis-tabs__item love-diagnosis-tabs__item--danger" type="button" data-love-reset>リセット</button>
       <button class="love-diagnosis-tabs__item" type="button" data-love-type-guide>タイプ解説</button>
     </nav>
@@ -485,6 +531,67 @@ function renderCharacterList() {
           </article>
         `).join('')}
       </div>
+    </section>
+  `;
+}
+
+export function renderCompatibilityResult(firstCode = 'HLTO', secondCode = 'HLTO') {
+  const result = getCompatibilityResult(firstCode, secondCode);
+  const firstType = RESULT_TYPES[firstCode];
+  const secondType = RESULT_TYPES[secondCode];
+
+  if (!result || !firstType || !secondType) {
+    return '<p class="love-compatibility__empty">相性データが見つかりませんでした。</p>';
+  }
+
+  return `
+    <article class="love-compatibility-result" data-love-compatibility-result>
+      <div class="love-compatibility-result__head">
+        <p>${firstType.typeName} × ${secondType.typeName}</p>
+        <strong>${result.stars}</strong>
+      </div>
+      <section>
+        <h4>良いところ</h4>
+        <ul>${result.good.map((copy) => `<li>${copy}</li>`).join('')}</ul>
+      </section>
+      <section>
+        <h4>注意したいところ</h4>
+        <ul>${result.caution.map((copy) => `<li>${copy}</li>`).join('')}</ul>
+      </section>
+      <section>
+        <h4>仲良く続けるコツ</h4>
+        <ul>${result.improvement.map((copy) => `<li>${copy}</li>`).join('')}</ul>
+      </section>
+    </article>
+  `;
+}
+
+function renderTypeSelect(name, label, selectedCode = 'HLTO') {
+  return `
+    <label class="love-compatibility-select">
+      <span>${label}</span>
+      <select class="field__input" name="${name}" data-love-compatibility-select>
+        ${Object.values(RESULT_TYPES).map((type) => `
+          <option value="${type.code}" ${type.code === selectedCode ? 'selected' : ''}>${type.code} ${type.typeName}</option>
+        `).join('')}
+      </select>
+    </label>
+  `;
+}
+
+function renderCompatibilityPanel() {
+  return `
+    <section class="love-compatibility" data-love-compatibility-panel hidden>
+      <div class="love-compatibility__head">
+        <p class="love-diagnosis__eyebrow">compatibility</p>
+        <h3>ふたりの相性を見る</h3>
+        <p>自分と相手の恋愛モビータイプを選ぶと、136通りの相性表から結果を表示します。</p>
+      </div>
+      <div class="love-compatibility__form">
+        ${renderTypeSelect('firstType', 'あなたのタイプ')}
+        ${renderTypeSelect('secondType', '相手のタイプ')}
+      </div>
+      ${renderCompatibilityResult()}
     </section>
   `;
 }
@@ -638,6 +745,7 @@ export function renderLoveMobbyDiagnosis() {
       </header>
       ${renderDiagnosisActions()}
       ${renderCharacterList()}
+      ${renderCompatibilityPanel()}
       ${renderTypeGuide()}
       ${diagnosisState.step === 'quiz' ? renderQuiz(diagnosisState) : diagnosisState.step === 'result' ? renderResult(diagnosisState) : renderIntro()}
     </section>

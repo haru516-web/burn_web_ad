@@ -1,3 +1,209 @@
+.couple-magazine {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.couple-magazine__lead,
+.couple-magazine__status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.couple-step {
+  display: grid;
+  gap: 10px;
+}
+
+.couple-step h4 {
+  font-size: 13px;
+}
+
+.couple-photo-grid {
+  column-count: 3;
+  column-gap: 0;
+}
+
+.couple-photo-option {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  break-inside: avoid;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.couple-photo-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.couple-photo-option img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.couple-photo-option input:checked + img {
+  outline: 2px solid rgba(81, 198, 255, 0.8);
+}
+
+.couple-badge {
+  display: inline-block;
+  font-size: 11px;
+  color: #6fd9ab;
+}
+
+.couple-cover-preview {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.couple-cover-preview img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.couple-cover-preview__eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.couple-message {
+  resize: vertical;
+}
+
+.couple-actions {
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+
+.couple-actions .couple-magazine__status {
+  grid-column: 1 / -1;
+}
+
+.issue-form {
+  display: grid;
+  gap: 16px;
+}
+
+.issue-post-grid {
+  column-count: 2;
+  column-gap: 0;
+}
+
+.issue-post-option {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  width: 100%;
+  margin-bottom: 10px;
+  break-inside: avoid;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.issue-post-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.issue-post-option img {
+  width: 100%;
+  aspect-ratio: 3 / 5;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.issue-post-option__meta {
+  display: grid;
+  gap: 2px;
+}
+
+.issue-post-option__meta strong {
+  font-size: 12px;
+}
+
+.issue-post-option__meta span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.issue-post-option input:checked + img {
+  outline: 3px solid rgba(81, 198, 255, 0.7);
+}
+
+.issue-list {
+  display: grid;
+  gap: 12px;
+}
+
+.issue-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow);
+}
+
+.issue-card--soft {
+  background: linear-gradient(180deg, rgba(13, 18, 26, 0.96), rgba(11, 15, 22, 0.92));
+}
+
+.issue-card--cream {
+  background: linear-gradient(180deg, rgba(13, 19, 24, 0.96), rgba(10, 14, 19, 0.92));
+}
+
+.issue-card--rose {
+  background: linear-gradient(180deg, rgba(15, 17, 28, 0.96), rgba(10, 13, 20, 0.92));
+}
+
+.issue-card__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.issue-card__title {
+  font-family: 'Zen Old Mincho', serif;
+  font-size: 24px;
+}
+
+.issue-card__subtitle,
+.issue-card__count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.issue-card__thumbs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.issue-card__thumbs img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
 .page--diagnosis {
   display: grid;
   gap: 18px;
@@ -10,7 +216,7 @@
 
 .love-diagnosis-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   padding: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -45,6 +251,7 @@
 .love-axis-bar,
 .love-result-sections section,
 .love-character-list,
+.love-compatibility,
 .love-character-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.035);
@@ -114,6 +321,7 @@
 }
 
 .love-character-list[hidden],
+.love-compatibility[hidden],
 .love-type-guide[hidden] {
   display: none;
 }
@@ -155,6 +363,93 @@
 .love-character-card p {
   color: var(--muted);
   font-size: 11px;
+}
+
+.love-compatibility {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.love-compatibility__head {
+  display: grid;
+  gap: 7px;
+}
+
+.love-compatibility__head h3 {
+  font-family: 'Zen Old Mincho', serif;
+  font-size: 21px;
+}
+
+.love-compatibility__head p:not(.love-diagnosis__eyebrow),
+.love-compatibility__empty {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.love-compatibility__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.love-compatibility-select {
+  display: grid;
+  gap: 7px;
+}
+
+.love-compatibility-select span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.love-compatibility-result {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.love-compatibility-result__head {
+  display: grid;
+  gap: 5px;
+}
+
+.love-compatibility-result__head p {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.love-compatibility-result__head strong {
+  color: #ffca73;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.love-compatibility-result section {
+  display: grid;
+  gap: 7px;
+}
+
+.love-compatibility-result h4 {
+  font-size: 12px;
+}
+
+.love-compatibility-result ul {
+  display: grid;
+  gap: 5px;
+  padding-left: 1.2em;
+}
+
+.love-compatibility-result li {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 .love-type-guide {
@@ -552,7 +847,8 @@
   }
 
   .love-diagnosis__nav,
-  .love-character-grid {
+  .love-character-grid,
+  .love-compatibility__form {
     grid-template-columns: 1fr;
   }
 

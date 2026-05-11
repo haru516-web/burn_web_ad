@@ -13,6 +13,7 @@ import {
   buildNextStateFromAnswer,
   createInitialDiagnosisState,
   readDiagnosisState,
+  renderCompatibilityResult,
   writeDiagnosisState,
 } from './pages/loveMobbyDiagnosis.js';
 import { renderProfile } from './pages/profile.js';
@@ -684,7 +685,7 @@ function getPageHtml() {
         saveScope: uiState.composeSaveScope,
       });
     case 'magazine':
-      return renderMagazine(state);
+      return renderMagazine(state, uiState);
     case 'record':
       return renderRecord(state, uiState);
     case 'profile':
@@ -1357,6 +1358,9 @@ function navigate(screen) {
     uiState.recordDraft = null;
     uiState.recordSelectedIds = [];
     uiState.recordEditingId = null;
+  }
+  if (screen !== 'magazine') {
+    uiState.magazineMode = 'diagnosis';
   }
   uiState.screen = screen;
   uiState.previewPostId = null;
@@ -3222,6 +3226,9 @@ function bindScreenNavigationEvents() {
         uiState.albumTab = 'pages';
         uiState.albumPageScope = albumPageScope;
         await syncAlbumPagesForCurrentConnection(albumPageScope);
+      }
+      if (button.dataset.homeNav === 'magazine') {
+        uiState.magazineMode = 'diagnosis';
       }
       navigate(button.dataset.homeNav);
     });
@@ -7975,21 +7982,114 @@ function bindComposeEvents() {
 }
 
 function bindMagazineEvents() {
+  if (document.querySelector('.couple-magazine')) {
+    const mvpStorageKey = 'couple-magazine-mvp-v1';
+    const readMvp = () => {
+      try {
+        return JSON.parse(window.localStorage.getItem(mvpStorageKey) || '{}') || {};
+      } catch (error) {
+        return {};
+      }
+    };
+    const writeMvp = (next) => {
+      window.localStorage.setItem(mvpStorageKey, JSON.stringify(next));
+    };
+
+    document.querySelectorAll('[data-couple-memory]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const selectedMemoryIds = Array.from(document.querySelectorAll('[data-couple-memory]:checked'))
+          .map((node) => String(node.value));
+        writeMvp({ ...readMvp(), selectedMemoryIds, statusText: '' });
+        renderScreen();
+      });
+    });
+
+    const messageInput = document.querySelector('[data-couple-message]');
+    messageInput?.addEventListener('blur', () => {
+      writeMvp({ ...readMvp(), partnerMessage: messageInput.value.trim() });
+    });
+
+    document.querySelector('[data-couple-generate]')?.addEventListener('click', () => {
+      const state = getState();
+      const mvp = readMvp();
+      const selectedMemoryIds = Array.isArray(mvp.selectedMemoryIds) ? mvp.selectedMemoryIds : [];
+      const selected = (state.recordMemories || []).filter((memory) => selectedMemoryIds.includes(memory.id));
+      if (!selected.length) return;
+      writeMvp({
+        ...mvp,
+        generatedAt: new Date().toISOString(),
+        coverTitle: 'Two of Us',
+        coverSubtitle: `${selected.length}枚の写真から作成`,
+        statusText: 'プレビューを作成しました。',
+      });
+      renderScreen();
+    });
+
+    document.querySelector('[data-couple-open]')?.addEventListener('click', () => {
+      writeMvp({ ...readMvp(), statusText: 'ふたりで開封するモックを開始しました（同期機能は未実装）。' });
+      renderScreen();
+    });
+
+    document.querySelector('[data-couple-paper]')?.addEventListener('click', () => {
+      writeMvp({ ...readMvp(), statusText: '紙で残すモックへ進みました（決済・配送は未実装）。' });
+      renderScreen();
+    });
+
+    const form = document.getElementById('issueForm');
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const postIds = formData.getAll('issuePostIds').map((id) => String(id));
+      if (!postIds.length) return;
+
+      saveIssue({
+        title: String(formData.get('title')).trim(),
+        subtitle: String(formData.get('subtitle') || '').trim(),
+        tone: String(formData.get('tone') || 'soft'),
+        postIds,
+      });
+
+      renderScreen();
+    });
+    return;
+  }
+
   document.querySelector('[data-love-character-list]')?.addEventListener('click', () => {
     const panel = document.querySelector('[data-love-character-panel]');
+    const compatibilityPanel = document.querySelector('[data-love-compatibility-panel]');
+    if (compatibilityPanel) compatibilityPanel.hidden = true;
     if (panel) panel.hidden = !panel.hidden;
   });
 
   document.querySelector('[data-love-tab-diagnosis]')?.addEventListener('click', () => {
     const characterPanel = document.querySelector('[data-love-character-panel]');
+    const compatibilityPanel = document.querySelector('[data-love-compatibility-panel]');
     const guidePanel = document.querySelector('[data-love-type-guide-panel]');
     if (characterPanel) characterPanel.hidden = true;
+    if (compatibilityPanel) compatibilityPanel.hidden = true;
     if (guidePanel) guidePanel.hidden = true;
+  });
+
+  document.querySelector('[data-love-compatibility]')?.addEventListener('click', () => {
+    const characterPanel = document.querySelector('[data-love-character-panel]');
+    const panel = document.querySelector('[data-love-compatibility-panel]');
+    if (characterPanel) characterPanel.hidden = true;
+    if (panel) panel.hidden = !panel.hidden;
   });
 
   document.querySelector('[data-love-type-guide]')?.addEventListener('click', () => {
     const panel = document.querySelector('[data-love-type-guide-panel]');
     if (panel) panel.hidden = false;
+  });
+
+  document.querySelectorAll('[data-love-compatibility-select]').forEach((select) => {
+    select.addEventListener('change', () => {
+      const panel = document.querySelector('[data-love-compatibility-panel]');
+      const result = panel?.querySelector('[data-love-compatibility-result], .love-compatibility__empty');
+      const [firstSelect, secondSelect] = Array.from(document.querySelectorAll('[data-love-compatibility-select]'));
+      if (!panel || !result || !firstSelect || !secondSelect) return;
+      result.outerHTML = renderCompatibilityResult(firstSelect.value, secondSelect.value);
+    });
   });
 
   document.querySelector('[data-love-type-guide-close]')?.addEventListener('click', () => {
@@ -9654,6 +9754,7 @@ function bindProfileEvents() {
 
   document.querySelectorAll('[data-profile-magazine-open]').forEach((button) => {
     button.addEventListener('click', () => {
+      uiState.magazineMode = 'issue';
       uiState.screen = 'magazine';
       render();
     });
