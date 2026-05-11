@@ -32,9 +32,9 @@ export function renderBottomNav(screen) {
         <span class="timeline-bottom-nav__icon" aria-hidden="true">${getIcon('camera')}</span>
         <span class="timeline-bottom-nav__label">記録</span>
       </button>
-      <button class="timeline-bottom-nav__item ${isMagazineActive ? 'is-active' : ''}" type="button" data-home-nav="magazine" aria-label="雑誌">
+      <button class="timeline-bottom-nav__item ${isMagazineActive ? 'is-active' : ''}" type="button" data-home-nav="magazine" aria-label="診断">
         <span class="timeline-bottom-nav__icon" aria-hidden="true">${getIcon('issue')}</span>
-        <span class="timeline-bottom-nav__label">雑誌</span>
+        <span class="timeline-bottom-nav__label">診断</span>
       </button>
       <button class="timeline-bottom-nav__item ${isProfileActive ? 'is-active' : ''}" type="button" data-home-nav="profile" aria-label="プロフィール">
         <span class="timeline-bottom-nav__icon" aria-hidden="true">${getIcon('profile')}</span>

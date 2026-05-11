@@ -8,6 +8,13 @@ import { renderHome, renderTimeline } from './pages/timeline.js';
 import { DATE_PLANS, PROFILE_SHEET_FIELDS, renderSearch } from './pages/search.js';
 import { renderCompose } from './pages/compose.js';
 import { renderMagazine } from './pages/magazine.js';
+import {
+  buildCompletedState,
+  buildNextStateFromAnswer,
+  createInitialDiagnosisState,
+  readDiagnosisState,
+  writeDiagnosisState,
+} from './pages/loveMobbyDiagnosis.js';
 import { renderProfile } from './pages/profile.js';
 import { renderPostDetail } from './pages/postDetail.js';
 import { renderRecord } from './pages/record.js';
@@ -7968,76 +7975,68 @@ function bindComposeEvents() {
 }
 
 function bindMagazineEvents() {
-  const mvpStorageKey = 'couple-magazine-mvp-v1';
-  const readMvp = () => {
-    try {
-      return JSON.parse(window.localStorage.getItem(mvpStorageKey) || '{}') || {};
-    } catch (error) {
-      return {};
-    }
-  };
-  const writeMvp = (next) => {
-    window.localStorage.setItem(mvpStorageKey, JSON.stringify(next));
-  };
+  document.querySelector('[data-love-character-list]')?.addEventListener('click', () => {
+    const panel = document.querySelector('[data-love-character-panel]');
+    if (panel) panel.hidden = !panel.hidden;
+  });
 
-  document.querySelectorAll('[data-couple-memory]').forEach((input) => {
+  document.querySelector('[data-love-tab-diagnosis]')?.addEventListener('click', () => {
+    const characterPanel = document.querySelector('[data-love-character-panel]');
+    const guidePanel = document.querySelector('[data-love-type-guide-panel]');
+    if (characterPanel) characterPanel.hidden = true;
+    if (guidePanel) guidePanel.hidden = true;
+  });
+
+  document.querySelector('[data-love-type-guide]')?.addEventListener('click', () => {
+    const panel = document.querySelector('[data-love-type-guide-panel]');
+    if (panel) panel.hidden = false;
+  });
+
+  document.querySelector('[data-love-type-guide-close]')?.addEventListener('click', () => {
+    const panel = document.querySelector('[data-love-type-guide-panel]');
+    if (panel) panel.hidden = true;
+  });
+
+  document.querySelector('[data-love-type-guide-panel]')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.hidden = true;
+  });
+
+  document.querySelector('[data-love-diagnosis-start]')?.addEventListener('click', () => {
+    writeDiagnosisState({ ...readDiagnosisState(), step: 'quiz', page: 0 });
+    renderScreen();
+  });
+
+  document.querySelectorAll('[data-love-answer]').forEach((input) => {
     input.addEventListener('change', () => {
-      const selectedMemoryIds = Array.from(document.querySelectorAll('[data-couple-memory]:checked'))
-        .map((node) => String(node.value));
-      writeMvp({ ...readMvp(), selectedMemoryIds, statusText: '' });
+      writeDiagnosisState(buildNextStateFromAnswer(readDiagnosisState(), input.dataset.loveAnswer, input.value));
       renderScreen();
     });
   });
 
-  const messageInput = document.querySelector('[data-couple-message]');
-  messageInput?.addEventListener('blur', () => {
-    writeMvp({ ...readMvp(), partnerMessage: messageInput.value.trim() });
-  });
-
-  const generateButton = document.querySelector('[data-couple-generate]');
-  generateButton?.addEventListener('click', () => {
-    const state = getState();
-    const mvp = readMvp();
-    const selectedMemoryIds = Array.isArray(mvp.selectedMemoryIds) ? mvp.selectedMemoryIds : [];
-    const selected = (state.recordMemories || []).filter((memory) => selectedMemoryIds.includes(memory.id));
-    if (!selected.length) return;
-    writeMvp({
-      ...mvp,
-      generatedAt: new Date().toISOString(),
-      coverTitle: 'Two of Us',
-      coverSubtitle: `${selected.length}枚の写真から作成`,
-      statusText: 'プレビューを作成しました。',
-    });
+  document.querySelector('[data-love-page-prev]')?.addEventListener('click', () => {
+    const diagnosisState = readDiagnosisState();
+    writeDiagnosisState({ ...diagnosisState, page: Math.max(0, Number(diagnosisState.page || 0) - 1) });
     renderScreen();
   });
 
-  const openButton = document.querySelector('[data-couple-open]');
-  openButton?.addEventListener('click', () => {
-    writeMvp({ ...readMvp(), statusText: 'ふたりで開封するモックを開始しました（同期機能は未実装）。' });
+  document.querySelector('[data-love-page-next]')?.addEventListener('click', () => {
+    const diagnosisState = readDiagnosisState();
+    const nextPage = Number(diagnosisState.page || 0) + 1;
+    if (nextPage >= 8) {
+      writeDiagnosisState(buildCompletedState(diagnosisState));
+    } else {
+      writeDiagnosisState({ ...diagnosisState, page: nextPage });
+    }
     renderScreen();
   });
 
-  const paperButton = document.querySelector('[data-couple-paper]');
-  paperButton?.addEventListener('click', () => {
-    writeMvp({ ...readMvp(), statusText: '紙で残すモックへ進みました（決済・配送は未実装）。' });
-    renderScreen();
+  document.querySelector('[data-love-couple-soon]')?.addEventListener('click', () => {
+    const status = document.querySelector('[data-love-status]');
+    if (status) status.textContent = 'カップル診断は個人版の結果を使って拡張予定です。';
   });
 
-  const form = document.getElementById('issueForm');
-  if (!form) return;
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const formData = new FormData(form);
-    const postIds = formData.getAll('issuePostIds').map((id) => String(id));
-    if (!postIds.length) return;
-
-    saveIssue({
-      title: String(formData.get('title')).trim(),
-      subtitle: String(formData.get('subtitle') || '').trim(),
-      tone: String(formData.get('tone') || 'soft'),
-      postIds,
-    });
-
+  document.querySelector('[data-love-reset]')?.addEventListener('click', () => {
+    writeDiagnosisState(createInitialDiagnosisState());
     renderScreen();
   });
 }
