@@ -18,6 +18,7 @@ const defaultState = {
     partnerBName: 'Partner',
     partnerBirthday: '',
     anniversaryDate: '2025-05-15',
+    birthdayDate: '',
     nextDateId: null,
     answers: {
       you: {},
@@ -29,9 +30,9 @@ const defaultState = {
     },
     calendarEntries: [],
     todos: [
-      { id: 'todo-cafe', title: '気になっているカフェに行く', note: '週末にゆっくり話せる場所を探す', done: false },
-      { id: 'todo-photo', title: '写真を撮りに行く', note: '季節の景色を一緒に残す', done: false },
-      { id: 'todo-trip', title: '小さな旅行を計画する', note: '行きたい場所を候補にする', done: false },
+      { id: 'todo-cafe', title: '気になっているカフェに行く', note: '週末にゆっくり話せる場所を探す', done: false, authorName: 'you' },
+      { id: 'todo-photo', title: '写真を撮りに行く', note: '季節の景色を一緒に残す', done: false, authorName: 'you' },
+      { id: 'todo-trip', title: '小さな旅行を計画する', note: '行きたい場所を候補にする', done: false, authorName: 'you' },
     ],
   },
 };
@@ -168,6 +169,7 @@ function normalizeState(saved) {
       partnerBName: savedCouple.partnerBName || defaultState.couple.partnerBName,
       partnerBirthday: savedCouple.partnerBirthday || '',
       anniversaryDate: savedCouple.anniversaryDate || defaultState.couple.anniversaryDate,
+      birthdayDate: savedCouple.birthdayDate || saved.profile?.birthday || '',
       nextDateId: savedCouple.nextDateId || null,
       answers: {
         you: savedAnswers.you && typeof savedAnswers.you === 'object' ? savedAnswers.you : {},
@@ -195,6 +197,8 @@ function normalizeState(saved) {
           title: todo.title || 'やりたいこと',
           note: todo.note || '',
           done: Boolean(todo.done),
+          authorId: todo.authorId || '',
+          authorName: todo.authorName || '',
           createdAt: todo.createdAt || new Date().toISOString(),
         }))
         : structuredClone(defaultState.couple.todos).map((todo) => ({
@@ -510,6 +514,9 @@ export function updateCoupleSettings(settings = {}) {
   if (Object.prototype.hasOwnProperty.call(settings, 'anniversaryDate')) {
     next.couple.anniversaryDate = String(settings.anniversaryDate || '').trim() || defaultState.couple.anniversaryDate;
   }
+  if (Object.prototype.hasOwnProperty.call(settings, 'birthdayDate')) {
+    next.couple.birthdayDate = String(settings.birthdayDate || '').trim();
+  }
   if (Object.prototype.hasOwnProperty.call(settings, 'partnerBName')) {
     next.couple.partnerBName = String(settings.partnerBName || '').trim() || defaultState.couple.partnerBName;
   }
@@ -550,6 +557,8 @@ export function replaceCoupleDatabaseData({
       title: todo.title || 'やりたいこと',
       note: todo.note || '',
       done: Boolean(todo.done),
+      authorId: todo.authorId || '',
+      authorName: todo.authorName || '',
       createdAt: todo.createdAt || new Date().toISOString(),
     }));
   }
@@ -565,6 +574,10 @@ export function replaceCoupleDatabaseData({
     next.couple.anniversaryDate = String(coupleSettings.anniversaryDate || '').trim()
       || next.couple.anniversaryDate
       || defaultState.couple.anniversaryDate;
+    next.couple.birthdayDate = String(coupleSettings.birthdayDate || '').trim()
+      || next.couple.birthdayDate
+      || next.profile.birthday
+      || '';
   }
 
   commit(next);
@@ -703,6 +716,8 @@ export function addCoupleTodo(todo) {
     title,
     note: String(todo?.note || '').trim(),
     done: false,
+    authorId: todo?.authorId || '',
+    authorName: String(todo?.authorName || state.profile?.name || 'you').trim() || 'you',
     createdAt: new Date().toISOString(),
   };
   next.couple.todos = [normalized, ...next.couple.todos];

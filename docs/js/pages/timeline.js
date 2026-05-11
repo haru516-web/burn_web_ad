@@ -1,5 +1,6 @@
 import { getIcon } from '../components/icons.js';
 import { getPostDateKey } from '../utils/date.js';
+import { getCalendarEntriesWithSpecialDates, getEntriesForDateWithSpecialDates } from '../utils/specialDates.js';
 
 function renderBrand() {
   return `
@@ -88,7 +89,7 @@ function renderSelectedDatePages(posts = []) {
 }
 
 function renderDateActions(entry) {
-  if (!entry?.id) return '';
+  if (!entry?.id || entry.isSpecialDate) return '';
   return `
     <div class="couple-list-actions couple-date-card-actions">
       <button type="button" data-home-edit-date-entry="${entry.id}" aria-label="予定を編集">
@@ -165,13 +166,15 @@ function renderSelectedDateInfo(couple = {}, selectedDate = '') {
   `;
 }
 
-function renderCalendarDynamic(couple = {}, selectedDate = '') {
-  const nextEntry = (couple.calendarEntries || []).find((entry) => entry.id === couple.nextDateId)
-    || (couple.calendarEntries || [])[0];
+function renderCalendarDynamic(state = {}, selectedDate = '') {
+  const couple = state.couple || {};
+  const displayEntries = getCalendarEntriesWithSpecialDates(state, selectedDate || getTodayDateKey());
+  const nextEntry = displayEntries.find((entry) => entry.id === couple.nextDateId)
+    || displayEntries[0];
   const monthDate = selectedDate || nextEntry?.date || getTodayDateKey();
   const calendarDays = buildCalendarDays(monthDate);
   const todayDate = getTodayDateKey();
-  const markedDates = new Map((couple.calendarEntries || []).map((entry, index) => [
+  const markedDates = new Map(getCalendarEntriesWithSpecialDates(state, monthDate).map((entry, index) => [
     entry.date,
     index % 2 === 0 ? 'rose' : 'sand',
   ]));
@@ -223,7 +226,7 @@ function renderSelectedDatePlan(state = {}, couple = {}, selectedDate = '') {
 function renderCalendarDatePopup(state = {}, uiState = {}) {
   const popupDate = uiState.calendarPopupDate || '';
   if (!popupDate) return '';
-  const entries = (state.couple?.calendarEntries || []).filter((entry) => entry.date === popupDate);
+  const entries = getEntriesForDateWithSpecialDates(state, popupDate);
   const posts = getPostsForDate(state, popupDate);
   const date = new Date(`${popupDate}T00:00:00`);
   const dateLabel = !Number.isNaN(date.getTime())
@@ -291,10 +294,14 @@ function renderHomeTodoRows(todos = []) {
 
   return visibleTodos.map((todo) => {
     const title = escapeCalendarText(todo.title || 'やりたいこと');
+    const authorName = escapeCalendarText(todo.authorName || 'you');
     return `
       <button class="futari-dashboard-todo__row ${todo.done ? 'is-done' : ''}" type="button" data-profile-toggle-todo="${escapeCalendarText(todo.id)}">
         <span class="futari-dashboard-todo__check" aria-hidden="true">${todo.done ? getIcon('check') : ''}</span>
-        <span class="futari-dashboard-todo__title">${title}</span>
+        <span class="futari-dashboard-todo__body">
+          <span class="futari-dashboard-todo__title">${title}</span>
+          <span class="futari-dashboard-todo__author">設定：${authorName}</span>
+        </span>
       </button>
     `;
   }).join('');
@@ -332,7 +339,7 @@ export function renderHome(state, uiState = {}) {
     <section class="page couple-home">
       <div class="couple-screen">
         ${renderBrand()}
-        ${renderCalendarDynamic(state.couple || {}, selectedDate)}
+        ${renderCalendarDynamic(state, selectedDate)}
         ${renderHomeQuickCards(state.couple || {})}
         ${renderCalendarDatePopup(state, uiState)}
       </div>

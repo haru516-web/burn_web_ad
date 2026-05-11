@@ -1,5 +1,6 @@
 import { getIcon } from '../components/icons.js';
 import { getPostDateKey } from '../utils/date.js';
+import { getCalendarEntriesWithSpecialDates, getEntriesForDateWithSpecialDates } from '../utils/specialDates.js';
 
 export const COUPLE_QUESTIONS = [
   {
@@ -149,7 +150,7 @@ function getPostTitle(post) {
 }
 
 function getEntriesForDate(state, dateString) {
-  return (state.couple?.calendarEntries || []).filter((entry) => entry.date === dateString);
+  return getEntriesForDateWithSpecialDates(state, dateString);
 }
 
 function getPostsForDate(state, dateString) {
@@ -187,10 +188,10 @@ function getQuestionProgress(couple = {}) {
 }
 
 function renderCalendarGrid(state, uiState) {
-  const entries = state.couple?.calendarEntries || [];
+  const selectedDate = uiState.selectedCalendarDate || getTodayDateKey();
+  const entries = getCalendarEntriesWithSpecialDates(state, selectedDate);
   const postDates = new Set((state.posts || []).map((post) => getPostDateKey(post)).filter(Boolean));
   const entryDates = new Set(entries.map((entry) => entry.date));
-  const selectedDate = uiState.selectedCalendarDate || getTodayDateKey();
   const todayDate = getTodayDateKey();
   const calendarDays = buildCalendarDays(selectedDate, 1);
 
@@ -280,8 +281,10 @@ function renderCalendarDatePopup(state, uiState) {
                   <div><dt>メモ</dt><dd>${escapeCalendarText(entry.note || '未設定')}</dd></div>
                 </dl>
                 <div class="calendar-date-popover__actions">
-                  <button class="calendar-date-popover__icon-button" type="button" data-edit-date-entry="${entry.id}" aria-label="編集">${getIcon('pencil')}</button>
-                  <button class="calendar-date-popover__icon-button is-danger" type="button" data-delete-date-entry="${entry.id}" aria-label="削除">${getIcon('trash')}</button>
+                  ${entry.isSpecialDate ? '' : `
+                    <button class="calendar-date-popover__icon-button" type="button" data-edit-date-entry="${entry.id}" aria-label="編集">${getIcon('pencil')}</button>
+                    <button class="calendar-date-popover__icon-button is-danger" type="button" data-delete-date-entry="${entry.id}" aria-label="削除">${getIcon('trash')}</button>
+                  `}
                 </div>
               </article>
             `).join('')}
@@ -717,17 +720,20 @@ function renderDraftList(state) {
 }
 
 function renderTodoListEntry(todo) {
+  const title = escapeCalendarText(todo.title || 'やりたいこと');
+  const authorName = escapeCalendarText(todo.authorName || 'you');
   return `
     <article class="couple-todo-list-card couple-card ${todo.done ? 'is-done' : ''}">
       <div>
-        <h2>${todo.title || 'やりたいこと'}</h2>
+        <h2>${title}</h2>
+        <p class="couple-todo-list-card__author">設定：${authorName}</p>
       </div>
       <div class="couple-todo-controls">
         <button
           class="couple-todo-check"
           type="button"
           data-toggle-couple-todo="${todo.id}"
-          aria-label="${todo.title || 'やりたいこと'}を${todo.done ? '未完了' : '完了'}にする"
+          aria-label="${title}を${todo.done ? '未完了' : '完了'}にする"
           aria-pressed="${todo.done}"
         >
           ${todo.done ? '✓' : ''}

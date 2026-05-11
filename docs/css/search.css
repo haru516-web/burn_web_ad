@@ -613,6 +613,10 @@
   line-height: 1.5;
 }
 
+.couple-todo-list-card__author {
+  color: rgba(111, 77, 72, 0.66);
+}
+
 .couple-todo-list-card.is-done h2,
 .couple-todo-list-card.is-done p {
   color: rgba(86, 76, 68, 0.58);

@@ -1251,6 +1251,16 @@ function renderScreen() {
   shell?.classList.toggle('app-shell--with-bottom-nav', hasBottomNav);
   screenArea.classList.toggle('screen-area--record-camera', isRecordCameraStage);
   screenArea.classList.toggle('screen-area--with-bottom-nav', hasBottomNav);
+  const currentBottomNav = shell?.querySelector('.timeline-bottom-nav');
+  if (hasBottomNav) {
+    if (currentBottomNav) {
+      currentBottomNav.outerHTML = renderBottomNav(uiState.screen);
+    } else {
+      screenArea.insertAdjacentHTML('afterend', renderBottomNav(uiState.screen));
+    }
+  } else {
+    currentBottomNav?.remove();
+  }
   if (!(uiState.screen === 'record' && uiState.recordStage === 'camera' && !uiState.recordDraft?.imageData)) {
     stopRecordCameraStream();
   }
@@ -2631,6 +2641,7 @@ function bindTimelineEvents() {
     button.addEventListener('click', async (event) => {
       event.stopPropagation();
       const entryId = button.dataset.homeDeleteDateEntry;
+      if (String(entryId || '').startsWith('special-')) return;
       deleteCoupleCalendarEntry(entryId);
       await deleteCoupleCalendarEntryFromSupabase(entryId);
       await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
@@ -3087,6 +3098,7 @@ function bindSearchEvents() {
   document.querySelectorAll('[data-delete-date-entry]').forEach((button) => {
     button.addEventListener('click', async () => {
       const entryId = button.dataset.deleteDateEntry;
+      if (String(entryId || '').startsWith('special-')) return;
       deleteCoupleCalendarEntry(entryId);
       await deleteCoupleCalendarEntryFromSupabase(entryId);
       await syncCoupleDataFromSupabase(uiState.partnerProfile?.hasPartner ? 'shared' : 'personal');
@@ -3137,8 +3149,11 @@ function bindSearchEvents() {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       const formData = new FormData(form);
+      const profile = getState().profile || {};
       const todo = addCoupleTodo({
         title: formData.get('todoTitle'),
+        authorId: uiState.authUser?.id || '',
+        authorName: profile.name || uiState.authUser?.email || 'you',
       });
       if (!todo) return;
       persistCoupleTodoToSupabase(todo);
@@ -9473,6 +9488,7 @@ function bindProfileEvents() {
       });
       updateCoupleSettings({
         anniversaryDate: String(formData.get('anniversaryDate') || '').trim(),
+        birthdayDate: birthday,
       });
       const storageScope = uiState.partnerProfile?.hasPartner ? 'shared' : 'personal';
       try {
@@ -9480,6 +9496,7 @@ function bindProfileEvents() {
           updateCurrentUserProfile({ displayName: name, birthday }),
           saveCoupleSettings({
             anniversaryDate: String(formData.get('anniversaryDate') || '').trim(),
+            birthdayDate: birthday,
           }, { storageScope }),
         ]);
         if (result?.error) throw result.error;

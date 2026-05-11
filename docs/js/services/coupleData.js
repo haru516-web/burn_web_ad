@@ -92,7 +92,7 @@ export async function listCoupleTodos({ storageScope = 'shared' } = {}) {
   const { user, memorySpaceId, displayScope } = await getCoupleDataContext(storageScope);
   let query = client
     .from('couple_todos')
-    .select('*')
+    .select('*, profiles:author_id(display_name, email)')
     .order('created_at', { ascending: false });
 
   if (displayScope === 'personal') {
@@ -108,6 +108,8 @@ export async function listCoupleTodos({ storageScope = 'shared' } = {}) {
     title: row.title || '',
     note: row.note || '',
     done: Boolean(row.done),
+    authorId: row.author_id || '',
+    authorName: row.profiles?.display_name || row.profiles?.email || '',
     createdAt: row.created_at || new Date().toISOString(),
   }));
 }
@@ -162,6 +164,7 @@ export async function loadCoupleSettings({ storageScope = 'shared' } = {}) {
   if (error) throw error;
   return data ? {
     anniversaryDate: data.anniversary_date || '',
+    birthdayDate: data.birthday_date || '',
   } : null;
 }
 
@@ -175,6 +178,7 @@ export async function saveCoupleSettings(settings = {}, { storageScope = 'shared
       author_id: user.id,
       display_scope: displayScope,
       anniversary_date: settings.anniversaryDate || null,
+      birthday_date: settings.birthdayDate || null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'space_id,display_scope' })
     .select('*')

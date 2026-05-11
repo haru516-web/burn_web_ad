@@ -49,10 +49,14 @@ function renderTodoRows(todos) {
 
   return visibleTodos.map((todo, index) => {
     const title = todo.title ? escapeHtml(todo.title) : '&#12420;&#12426;&#12383;&#12356;&#12371;&#12392;';
+    const authorName = escapeHtml(todo.authorName || 'you');
     return `
     <button class="futari-dashboard-todo__row ${todo.done ? 'is-done' : ''}" type="button" data-profile-toggle-todo="${escapeHtml(todo.id)}">
       <span class="futari-dashboard-todo__check" aria-hidden="true">${todo.done ? getIcon('check') : ''}</span>
-      <span class="futari-dashboard-todo__title">${title}</span>
+      <span class="futari-dashboard-todo__body">
+        <span class="futari-dashboard-todo__title">${title}</span>
+        <span class="futari-dashboard-todo__author">設定：${authorName}</span>
+      </span>
     </button>
   `;
   }).join('');
@@ -234,6 +238,7 @@ function renderAccountSettings(state = {}, uiState = {}) {
   const profile = state.profile || {};
   const couple = state.couple || {};
   const email = uiState.authUser?.email || '';
+  const birthday = couple.birthdayDate || profile.birthday || '';
   return `
     <section class="futari-settings-panel futari-dashboard-card">
       <div class="futari-settings-panel__head">
@@ -259,7 +264,7 @@ function renderAccountSettings(state = {}, uiState = {}) {
         </label>
         <label>
           <span>誕生日</span>
-          <input type="date" name="birthday" value="${escapeHtml(profile.birthday || '')}" />
+          <input type="date" name="birthday" value="${escapeHtml(birthday)}" />
         </label>
         <button class="futari-settings-save" type="submit">保存</button>
       </form>

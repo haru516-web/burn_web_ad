@@ -292,6 +292,7 @@ create table if not exists public.couple_settings (
   author_id uuid not null references public.profiles(id) on delete cascade,
   display_scope text not null default 'couple' check (display_scope in ('personal', 'couple')),
   anniversary_date date,
+  birthday_date date,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (space_id, display_scope)
@@ -302,6 +303,7 @@ alter table public.couple_settings
   add column if not exists author_id uuid references public.profiles(id) on delete cascade,
   add column if not exists display_scope text not null default 'couple',
   add column if not exists anniversary_date date,
+  add column if not exists birthday_date date,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 
