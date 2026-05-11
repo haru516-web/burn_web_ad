@@ -1070,7 +1070,7 @@ function renderShell() {
   const shellClasses = ['app-shell'];
   const screenAreaClasses = ['screen-area'];
   const themeName = resolveHomeTheme();
-  const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera';
+  const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera' && !uiState.recordDraft?.imageData;
   const bottomNavScreens = ['home', 'timeline', 'search', 'record', 'magazine', 'profile', 'compose', 'post', 'photo'];
   const hasBottomNav = bottomNavScreens.includes(uiState.screen) && !isRecordCameraStage;
 
@@ -1243,7 +1243,7 @@ function renderRecordPostingOverlay() {
 function renderScreen() {
   const screenArea = document.getElementById('screenArea');
   if (!screenArea) return;
-  const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera';
+  const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera' && !uiState.recordDraft?.imageData;
   const bottomNavScreens = ['home', 'timeline', 'search', 'record', 'magazine', 'profile', 'compose', 'post', 'photo'];
   const hasBottomNav = bottomNavScreens.includes(uiState.screen) && !isRecordCameraStage;
   const shell = screenArea.closest('.app-shell');
