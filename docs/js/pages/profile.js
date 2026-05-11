@@ -198,7 +198,7 @@ function renderSettingsList(state = {}, uiState = {}) {
   const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
   const items = [
     ['account', 'アカウント情報'],
-    ['partner', '相手'],
+    ['partner', '相手＆共有'],
     ['disconnect', '共有解除'],
     ['logout', 'ログアウト'],
     ['delete', 'アカウント削除'],
@@ -276,7 +276,7 @@ function renderPartnerSettings(state = {}, uiState = {}) {
     <section class="futari-settings-panel futari-dashboard-card">
       <div class="futari-settings-panel__head">
         <button type="button" data-profile-settings-back aria-label="戻る">${getIcon('arrowLeft')}</button>
-        <h1>相手</h1>
+        <h1>相手＆共有</h1>
       </div>
       ${partner.loading ? `<p class="futari-settings-note">相手情報を読み込んでいます。</p>` : ''}
       <div class="futari-settings-partner ${hasPartner ? '' : 'is-pending'}">
