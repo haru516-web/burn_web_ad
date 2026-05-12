@@ -195,7 +195,7 @@ function renderSettingsList(state = {}, uiState = {}) {
   const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
   const items = [
     ['account', 'アカウント情報'],
-    ['partner', '相手＆共有'],
+    ['partner', '相手＆招待'],
     ['disconnect', '共有解除'],
     ['logout', 'ログアウト'],
     ['delete', 'アカウント削除'],
@@ -274,7 +274,7 @@ function renderPartnerSettings(state = {}, uiState = {}) {
     <section class="futari-settings-panel futari-dashboard-card">
       <div class="futari-settings-panel__head">
         <button type="button" data-profile-settings-back aria-label="戻る">${getIcon('arrowLeft')}</button>
-        <h1>相手＆共有</h1>
+        <h1>相手＆招待</h1>
       </div>
       ${partner.loading ? `<p class="futari-settings-note">相手情報を読み込んでいます。</p>` : ''}
       <div class="futari-settings-partner ${hasPartner ? '' : 'is-pending'}">
@@ -410,18 +410,6 @@ export function renderProfile(state, uiState = {}) {
           ${renderMagazineCard(posts)}
         </section>
 
-        <section class="futari-dashboard-plus futari-dashboard-card">
-          <div>
-            <h2>BURN Plus <span>&#10022;</span></h2>
-            <p>&#12486;&#12531;&#12503;&#12524;&#35299;&#25918;&#12539;&#24605;&#12356;&#20986;&#20445;&#23384;&#12539;&#29305;&#21029;&#12487;&#12470;&#12452;&#12531;</p>
-            <small>&#12405;&#12383;&#12426;&#12398;&#26178;&#38291;&#12434;&#12289;&#12418;&#12387;&#12392;&#29305;&#21029;&#12395;&#12290;</small>
-          </div>
-          <button type="button" data-open-plus-plan>
-            &#12503;&#12521;&#12531;&#12434;&#35211;&#12427;
-            ${getIcon('chevronRight')}
-          </button>
-        </section>
-        ${renderInviteLinkCard(uiState.inviteLink || {})}
         `}
       </div>
     </section>

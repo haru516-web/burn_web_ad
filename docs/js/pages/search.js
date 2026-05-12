@@ -240,7 +240,7 @@ function getDateAddDraft(uiState = {}) {
     date: uiState.selectedCalendarDate || getTodayDateKey(),
     timeOfDay: 'noon',
     startTime: '11:00',
-    endTime: '',
+    endTime: '13:30',
     type: 'cafe',
     title: '',
     place: '',
@@ -377,6 +377,12 @@ function renderDateAddDetails(uiState) {
         <label>
           <span>開始時間</span>
           <select name="startTime">${renderTimeOptions(draft.startTime)}</select>
+        </label>
+      </section>
+      <section class="couple-card date-add-field-card">
+        <label>
+          <span>終了時間</span>
+          <select name="endTime">${renderTimeOptions(draft.endTime)}</select>
         </label>
       </section>
       <section class="couple-card date-add-field-card">

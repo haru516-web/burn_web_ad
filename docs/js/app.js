@@ -2775,7 +2775,7 @@ function bindSearchEvents() {
     date: uiState.selectedCalendarDate || getTodayDateKey(),
     timeOfDay: 'noon',
     startTime: '11:00',
-    endTime: '',
+    endTime: '13:30',
     type: 'cafe',
     title: '',
     place: '',
@@ -3030,15 +3030,20 @@ function bindSearchEvents() {
       const draft = ensureDateAddDraft();
       updateDateAddDraft({
         startTime: String(formData.get('startTime') || draft.startTime).trim(),
+        endTime: String(formData.get('endTime') || draft.endTime).trim(),
         place: String(formData.get('place') || draft.place).trim(),
         note: String(formData.get('note') || draft.note).trim(),
       });
       const finalDraft = ensureDateAddDraft();
+      const unsetTimeLabel = '\u672a\u5b9a';
+      const timeText = finalDraft.endTime && finalDraft.endTime !== unsetTimeLabel
+        ? `${finalDraft.startTime || unsetTimeLabel}\u301c${finalDraft.endTime}`
+        : (finalDraft.startTime || unsetTimeLabel);
       const entryInput = {
         planId: '',
         title: finalDraft.place || finalDraft.title || 'ふたりのデート',
         date: finalDraft.date,
-        time: finalDraft.startTime || '未定',
+        time: timeText,
         place: finalDraft.place,
         note: finalDraft.note,
         tags: [],

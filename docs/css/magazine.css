@@ -630,10 +630,11 @@
 }
 
 .love-answer-grid--scale {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(24px, 1fr));
   align-items: center;
-  justify-content: space-between;
-  gap: 7px;
+  justify-items: center;
+  gap: 6px;
   padding: 0 2px;
 }
 
@@ -654,7 +655,7 @@
   display: grid;
   width: 100%;
   min-width: 0;
-  min-height: 54px;
+  min-height: 58px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -664,9 +665,11 @@
 
 .love-answer-option--scale span {
   display: block;
+  flex: 0 0 auto;
   aspect-ratio: 1 / 1;
   border: 3px solid rgba(255, 255, 255, 0.28);
   border-radius: 50%;
+  pointer-events: none;
   transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
@@ -686,8 +689,14 @@
 }
 
 .love-answer-option--4 span {
-  width: 22px;
-  border-color: rgba(255, 255, 255, 0.32);
+  width: 32px;
+  border-color: transparent;
+  background:
+    linear-gradient(90deg, #c85e9c 0 50%, #8b63df 50% 100%) border-box;
+  -webkit-mask:
+    radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
+  mask:
+    radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
 }
 
 .love-answer-option--1 span,
@@ -712,6 +721,12 @@
   transform: scale(1.06);
 }
 
+.love-answer-option--4.is-selected span {
+  background: linear-gradient(90deg, #c85e9c 0 50%, #8b63df 50% 100%);
+  -webkit-mask: none;
+  mask: none;
+}
+
 .love-answer-option--1,
 .love-answer-option--2,
 .love-answer-option--3 {
@@ -725,7 +740,7 @@
 }
 
 .love-answer-option--4 {
-  color: rgba(255, 255, 255, 0.42);
+  color: #c85e9c;
 }
 
 .love-answer-option--scale em {
@@ -734,12 +749,18 @@
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  pointer-events: none;
   white-space: nowrap;
 }
 
 .love-answer-option input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
+  cursor: pointer;
 }
 
 .love-answer-option.is-selected:not(.love-answer-option--scale) {
@@ -865,7 +886,8 @@
   }
 
   .love-answer-grid--scale {
-    gap: 3px;
+    grid-template-columns: repeat(7, minmax(22px, 1fr));
+    gap: 2px;
   }
 
   .love-answer-option--1 span,
@@ -880,6 +902,10 @@
 
   .love-answer-option--3 span,
   .love-answer-option--5 span {
+    width: 28px;
+  }
+
+  .love-answer-option--4 span {
     width: 28px;
   }
 }
