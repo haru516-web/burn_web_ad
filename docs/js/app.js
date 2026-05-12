@@ -13,6 +13,7 @@ import {
   buildNextStateFromAnswer,
   createInitialDiagnosisState,
   readDiagnosisState,
+  renderCharacterDetail,
   renderCompatibilityResult,
   writeDiagnosisState,
 } from './pages/loveMobbyDiagnosis.js';
@@ -8060,26 +8061,48 @@ function bindMagazineEvents() {
   }
 
   document.querySelector('[data-love-character-list]')?.addEventListener('click', () => {
+    const diagnosisPanel = document.querySelector('[data-love-diagnosis-panel]');
     const panel = document.querySelector('[data-love-character-panel]');
     const compatibilityPanel = document.querySelector('[data-love-compatibility-panel]');
     if (compatibilityPanel) compatibilityPanel.hidden = true;
-    if (panel) panel.hidden = !panel.hidden;
+    if (panel) {
+      panel.hidden = !panel.hidden;
+      if (diagnosisPanel) diagnosisPanel.hidden = !panel.hidden;
+    }
+  });
+
+  document.querySelectorAll('[data-love-character-code]').forEach((card) => {
+    card.addEventListener('click', () => {
+      const detail = document.querySelector('[data-love-character-detail]');
+      const code = card.getAttribute('data-love-character-code') || 'HLTO';
+      if (!detail) return;
+      detail.outerHTML = renderCharacterDetail(code);
+      document.querySelectorAll('[data-love-character-code]').forEach((nextCard) => {
+        nextCard.classList.toggle('is-selected', nextCard === card);
+      });
+    });
   });
 
   document.querySelector('[data-love-tab-diagnosis]')?.addEventListener('click', () => {
+    const diagnosisPanel = document.querySelector('[data-love-diagnosis-panel]');
     const characterPanel = document.querySelector('[data-love-character-panel]');
     const compatibilityPanel = document.querySelector('[data-love-compatibility-panel]');
     const guidePanel = document.querySelector('[data-love-type-guide-panel]');
+    if (diagnosisPanel) diagnosisPanel.hidden = false;
     if (characterPanel) characterPanel.hidden = true;
     if (compatibilityPanel) compatibilityPanel.hidden = true;
     if (guidePanel) guidePanel.hidden = true;
   });
 
   document.querySelector('[data-love-compatibility]')?.addEventListener('click', () => {
+    const diagnosisPanel = document.querySelector('[data-love-diagnosis-panel]');
     const characterPanel = document.querySelector('[data-love-character-panel]');
     const panel = document.querySelector('[data-love-compatibility-panel]');
     if (characterPanel) characterPanel.hidden = true;
-    if (panel) panel.hidden = !panel.hidden;
+    if (panel) {
+      panel.hidden = !panel.hidden;
+      if (diagnosisPanel) diagnosisPanel.hidden = !panel.hidden;
+    }
   });
 
   document.querySelector('[data-love-type-guide]')?.addEventListener('click', () => {

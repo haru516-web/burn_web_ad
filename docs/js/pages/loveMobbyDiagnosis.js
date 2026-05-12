@@ -482,6 +482,11 @@ function getResultDetails(result) {
   };
 }
 
+function getResultImageSrc(resultType) {
+  const imageName = resultType?.typeName ? `${resultType.typeName}.webp` : '';
+  return imageName ? `/image/lovemobby/${encodeURIComponent(imageName)}` : '';
+}
+
 function renderIntro() {
   return `
     <section class="love-diagnosis love-diagnosis--intro">
@@ -524,14 +529,49 @@ function renderCharacterList() {
       </div>
       <div class="love-character-grid">
         ${Object.values(RESULT_TYPES).map((type) => `
-          <article class="love-character-card">
-            <span>${type.code}</span>
-            <strong>${type.typeName}</strong>
-            <p>${type.characterName}</p>
-          </article>
+          <button class="love-character-card" type="button" data-love-character-code="${type.code}">
+            <img src="${getResultImageSrc(type)}" alt="${type.characterName}" loading="lazy" decoding="async" />
+            <div class="love-character-card__copy">
+              <span>${type.code}</span>
+              <strong>${type.typeName}</strong>
+              <p>${type.characterName}</p>
+            </div>
+          </button>
         `).join('')}
       </div>
+      ${renderCharacterDetail('HLTO')}
     </section>
+  `;
+}
+
+export function renderCharacterDetail(code = 'HLTO') {
+  const type = RESULT_TYPES[code] || RESULT_TYPES.HLTO;
+  const details = getResultDetails({ resultCode: type.code });
+
+  return `
+    <article class="love-character-detail" data-love-character-detail>
+      <div class="love-character-detail__head">
+        <img src="${getResultImageSrc(type)}" alt="${type.characterName}" loading="lazy" decoding="async" />
+        <div>
+          <p class="love-diagnosis__eyebrow">character ${type.code}</p>
+          <h4>${type.typeName}</h4>
+          <strong>${type.characterName}</strong>
+          <p>${type.shortCopy}</p>
+        </div>
+      </div>
+      <section>
+        <h5>恋愛傾向</h5>
+        ${details.tendency.map((copy) => `<p>${copy}</p>`).join('')}
+      </section>
+      <section>
+        <h5>求めやすいこと</h5>
+        <ul>${details.needs.map((copy) => `<li>${copy}</li>`).join('')}</ul>
+      </section>
+      <section>
+        <h5>しんどくなりやすい場面</h5>
+        <ul>${details.strain.map((copy) => `<li>${copy}</li>`).join('')}</ul>
+      </section>
+    </article>
   `;
 }
 
@@ -547,7 +587,17 @@ export function renderCompatibilityResult(firstCode = 'HLTO', secondCode = 'HLTO
   return `
     <article class="love-compatibility-result" data-love-compatibility-result>
       <div class="love-compatibility-result__head">
-        <p>${firstType.typeName} × ${secondType.typeName}</p>
+        <div class="love-compatibility-result__pair">
+          <figure>
+            <img src="${getResultImageSrc(firstType)}" alt="${firstType.characterName}" loading="lazy" decoding="async" />
+            <figcaption><span>${firstType.code}</span>${firstType.typeName}</figcaption>
+          </figure>
+          <i>×</i>
+          <figure>
+            <img src="${getResultImageSrc(secondType)}" alt="${secondType.characterName}" loading="lazy" decoding="async" />
+            <figcaption><span>${secondType.code}</span>${secondType.typeName}</figcaption>
+          </figure>
+        </div>
         <strong>${result.stars}</strong>
       </div>
       <section>
@@ -697,11 +747,14 @@ function renderResult(diagnosisState) {
     : computeResult(QUESTIONS, diagnosisState.answers || {});
   const resultType = result.resultType || RESULT_TYPES[result.resultCode];
   const details = getResultDetails(result);
+  const resultImageSrc = getResultImageSrc(resultType);
 
   return `
     <section class="love-diagnosis love-diagnosis--result">
       <article class="love-result-hero">
-        <div class="love-result-hero__image" aria-label="キャラ画像準備中">no image</div>
+        <div class="love-result-hero__image">
+          ${resultImageSrc ? `<img src="${resultImageSrc}" alt="${resultType.characterName}" loading="lazy" decoding="async" />` : ''}
+        </div>
         <div class="love-result-hero__copy">
           <p class="love-diagnosis__eyebrow">result ${result.resultCode}</p>
           <h3>${resultType.typeName}</h3>
@@ -747,7 +800,9 @@ export function renderLoveMobbyDiagnosis() {
       ${renderCharacterList()}
       ${renderCompatibilityPanel()}
       ${renderTypeGuide()}
-      ${diagnosisState.step === 'quiz' ? renderQuiz(diagnosisState) : diagnosisState.step === 'result' ? renderResult(diagnosisState) : renderIntro()}
+      <div data-love-diagnosis-panel>
+        ${diagnosisState.step === 'quiz' ? renderQuiz(diagnosisState) : diagnosisState.step === 'result' ? renderResult(diagnosisState) : renderIntro()}
+      </div>
     </section>
   `;
 }
