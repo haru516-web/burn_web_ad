@@ -76,7 +76,6 @@ function renderProfileBook(profile = {}, isOpen = false) {
 
 function renderMagazineCard(posts = []) {
   const pageCount = posts.length;
-  const coverImage = posts.find((post) => post.imageData)?.imageData || '';
   return `
     <section class="futari-dashboard-magazine futari-dashboard-card">
       <button class="futari-dashboard-magazine__button" type="button" data-profile-magazine-open>
@@ -85,10 +84,12 @@ function renderMagazineCard(posts = []) {
           <small>&#24605;&#12356;&#20986;&#12434;1&#20874;&#12395;&#12414;&#12392;&#12417;&#12427;</small>
         </span>
         <span class="futari-dashboard-magazine__preview" aria-hidden="true">
-          <span class="futari-dashboard-magazine__paper futari-dashboard-magazine__paper--back"></span>
+          <span class="futari-dashboard-magazine__paper futari-dashboard-magazine__paper--back">
+            <img src="./image/magazine_cover/page.jpg" alt="" />
+          </span>
           <span class="futari-dashboard-magazine__paper futari-dashboard-magazine__paper--front">
             <span>Our<br />Story</span>
-            ${coverImage ? `<img src="${coverImage}" alt="" />` : '<i></i>'}
+            <img src="./image/magazine_cover/cover.png" alt="" />
           </span>
           <span class="futari-dashboard-magazine__vol">vol.<b>01</b></span>
         </span>
@@ -374,11 +375,13 @@ export function renderProfile(state, uiState = {}) {
         ${isSettings ? renderSettingsScreen(state, uiState) : `
         <section class="futari-dashboard-top">
           <article class="futari-dashboard-card futari-dashboard-card--anniversary">
-            <div>
-              <p>&#35352;&#24565;&#26085;</p>
-              <strong>${escapeHtml(formatAnniversary(anniversaryDate))}</strong>
+            <div class="futari-dashboard-card--anniversary__inner">
+              <div>
+                <p>&#35352;&#24565;&#26085;</p>
+                <strong>${escapeHtml(formatAnniversary(anniversaryDate))}</strong>
+              </div>
+              <i aria-hidden="true">&#9825;</i>
             </div>
-            <i aria-hidden="true">&#9825;</i>
           </article>
 
           <article class="futari-dashboard-card futari-dashboard-card--days">

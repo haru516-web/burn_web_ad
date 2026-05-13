@@ -8158,9 +8158,20 @@ function bindMagazineEvents() {
     renderScreen();
   });
 
-  document.querySelector('[data-love-couple-soon]')?.addEventListener('click', () => {
+  document.querySelector('[data-love-open-compatibility]')?.addEventListener('click', () => {
+    const diagnosisPanel = document.querySelector('[data-love-diagnosis-panel]');
+    const characterPanel = document.querySelector('[data-love-character-panel]');
+    const panel = document.querySelector('[data-love-compatibility-panel]');
+    const guidePanel = document.querySelector('[data-love-type-guide-panel]');
     const status = document.querySelector('[data-love-status]');
-    if (status) status.textContent = 'カップル診断は個人版の結果を使って拡張予定です。';
+    if (diagnosisPanel) diagnosisPanel.hidden = true;
+    if (characterPanel) characterPanel.hidden = true;
+    if (guidePanel) guidePanel.hidden = true;
+    if (panel) {
+      panel.hidden = false;
+      panel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+    if (status) status.textContent = '';
   });
 
   document.querySelector('[data-love-reset]')?.addEventListener('click', () => {
@@ -10554,3 +10565,4 @@ if (typeof window !== 'undefined' && !window.__MEMORIES_REACT_HOST__) {
     bootLegacyApp(fallbackRoot);
   }
 }
+

@@ -376,10 +376,24 @@
 
 .futari-dashboard-card--anniversary {
   min-height: 86px;
-  display: grid;
-  align-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 15px 18px;
   border-radius: 18px;
+  text-align: center;
+}
+
+.futari-dashboard-card--anniversary__inner {
+  width: min(100%, 180px);
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.futari-dashboard-card--anniversary__inner > div {
+  width: 100%;
 }
 
 .futari-dashboard-card--anniversary p,
@@ -396,6 +410,7 @@
 .futari-dashboard-card--days strong,
 .futari-dashboard-card--pages strong,
 .futari-dashboard-card--dates strong {
+  display: block;
   color: #261d19;
   font-family: "Cormorant Garamond", "Times New Roman", serif;
   font-size: 36px;
@@ -408,6 +423,7 @@
   position: static;
   display: flex;
   align-items: center;
+  justify-content: center;
   width: 100%;
   margin-top: 6px;
   color: #d5a79b;
@@ -576,6 +592,7 @@
 
 .futari-dashboard-magazine__paper {
   position: absolute;
+  overflow: hidden;
   width: 74px;
   height: 98px;
   border: 1px solid rgba(226, 211, 199, 0.9);
@@ -585,6 +602,12 @@
 
 .futari-dashboard-magazine__paper--back {
   transform: translate(20px, -4px) rotate(8deg);
+}
+
+.futari-dashboard-magazine__paper--back img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .futari-dashboard-magazine__paper--front {

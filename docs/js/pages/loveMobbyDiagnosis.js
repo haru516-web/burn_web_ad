@@ -534,7 +534,6 @@ function renderCharacterList() {
             <div class="love-character-card__copy">
               <span>${type.code}</span>
               <strong>${type.typeName}</strong>
-              <p>${type.characterName}</p>
             </div>
           </button>
         `).join('')}
@@ -555,7 +554,6 @@ export function renderCharacterDetail(code = 'HLTO') {
         <div>
           <p class="love-diagnosis__eyebrow">character ${type.code}</p>
           <h4>${type.typeName}</h4>
-          <strong>${type.characterName}</strong>
           <p>${type.shortCopy}</p>
         </div>
       </div>
@@ -629,7 +627,13 @@ function renderTypeSelect(name, label, selectedCode = 'HLTO') {
   `;
 }
 
-function renderCompatibilityPanel() {
+function getDiagnosisResultCode(diagnosisState) {
+  const resultCode = diagnosisState?.resultCode || diagnosisState?.result?.resultCode || '';
+  return RESULT_TYPES[resultCode] ? resultCode : 'HLTO';
+}
+
+function renderCompatibilityPanel(diagnosisState) {
+  const ownTypeCode = getDiagnosisResultCode(diagnosisState);
   return `
     <section class="love-compatibility" data-love-compatibility-panel hidden>
       <div class="love-compatibility__head">
@@ -638,10 +642,10 @@ function renderCompatibilityPanel() {
         <p>自分と相手の恋愛モビータイプを選ぶと、136通りの相性表から結果を表示します。</p>
       </div>
       <div class="love-compatibility__form">
-        ${renderTypeSelect('firstType', 'あなたのタイプ')}
+        ${renderTypeSelect('firstType', 'あなたのタイプ', ownTypeCode)}
         ${renderTypeSelect('secondType', '相手のタイプ')}
       </div>
-      ${renderCompatibilityResult()}
+      ${renderCompatibilityResult(ownTypeCode)}
     </section>
   `;
 }
@@ -758,7 +762,6 @@ function renderResult(diagnosisState) {
         <div class="love-result-hero__copy">
           <p class="love-diagnosis__eyebrow">result ${result.resultCode}</p>
           <h3>${resultType.typeName}</h3>
-          <strong>${resultType.characterName}</strong>
           <p>${resultType.shortCopy}</p>
         </div>
       </article>
@@ -774,8 +777,7 @@ function renderResult(diagnosisState) {
         <section><h4>BURNでおすすめの残し方</h4><ul>${details.burn.map((copy) => `<li>${copy}</li>`).join('')}</ul></section>
       </div>
       <div class="love-diagnosis__nav">
-        <button class="button button--primary" type="button" data-home-nav="compose">プロフィール帳風ページ作成</button>
-        <button class="button button--ghost" type="button" data-love-couple-soon>カップル診断へ進む</button>
+        <button class="button button--ghost" type="button" data-love-open-compatibility>&#30456;&#24615;&#12434;&#35211;&#12427;</button>
       </div>
       <button class="button button--ghost button--full" type="button" data-love-reset>診断をリセット</button>
       <p class="couple-magazine__status" data-love-status></p>
@@ -787,10 +789,7 @@ export function renderLoveMobbyDiagnosis() {
   const diagnosisState = readDiagnosisState();
   return `
     <section class="page page--magazine page--diagnosis">
-      <header class="page-header page-header--with-back">
-        <button class="button button--ghost page-back page-back--icon" type="button" data-home-nav="home" aria-label="Back">
-          ${getIcon('returnLeft')}
-        </button>
+      <header class="page-header">
         <div>
           <p class="page-header__mini">diagnosis</p>
           <h2 class="page-header__title">恋愛モビー診断</h2>
@@ -798,7 +797,7 @@ export function renderLoveMobbyDiagnosis() {
       </header>
       ${renderDiagnosisActions()}
       ${renderCharacterList()}
-      ${renderCompatibilityPanel()}
+      ${renderCompatibilityPanel(diagnosisState)}
       ${renderTypeGuide()}
       <div data-love-diagnosis-panel>
         ${diagnosisState.step === 'quiz' ? renderQuiz(diagnosisState) : diagnosisState.step === 'result' ? renderResult(diagnosisState) : renderIntro()}
@@ -806,3 +805,4 @@ export function renderLoveMobbyDiagnosis() {
     </section>
   `;
 }
+
