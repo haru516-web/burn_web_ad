@@ -9710,6 +9710,11 @@ function bindProfileEvents() {
         if (kind === 'delete') {
           const result = await deleteCurrentAccount();
           if (result?.error) throw result.error;
+          await signOut().catch(() => {});
+          uiState.screen = 'opening';
+          uiState.profileSection = 'pages';
+          uiState.settingsConfirmStep = 1;
+          renderScreen();
         } else if (kind === 'disconnect') {
           const { user, memorySpaceId } = await ensureProfileAndMemorySpace();
           const result = await disconnectSharedSpace(memorySpaceId);
@@ -9752,6 +9757,9 @@ function bindProfileEvents() {
           if (result?.error) throw result.error;
         }
       } catch (error) {
+        if (typeof window !== 'undefined') {
+          window.alert(error?.message || '処理に失敗しました。');
+        }
         uiState.profileSection = 'settings';
         uiState.settingsConfirmStep = 1;
         uiState.inviteLink = {

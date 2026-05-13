@@ -24,7 +24,11 @@ export function requireSupabase() {
 
 export function getAuthRedirectUrl(path = '/') {
   if (typeof window === 'undefined') return undefined;
-  return new URL(path, window.location.origin).toString();
+  const basePath = window.location.pathname.endsWith('/')
+    ? window.location.pathname
+    : window.location.pathname.replace(/\/[^/]*$/, '/');
+  const normalizedPath = String(path || '/').replace(/^\/+/, '');
+  return new URL(normalizedPath, `${window.location.origin}${basePath}`).toString();
 }
 
 export async function signInWithEmailOtp(email, { redirectPath = '/' } = {}) {
