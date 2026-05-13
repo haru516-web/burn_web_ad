@@ -8222,6 +8222,51 @@ function bindMagazineEvents() {
     if (status) status.textContent = '';
   });
 
+  document.querySelector('[data-love-share-card-toggle]')?.addEventListener('click', () => {
+    const modal = document.querySelector('[data-love-share-card-modal]');
+    const status = document.querySelector('[data-love-status]');
+    if (!modal) return;
+    modal.hidden = false;
+    if (status) status.textContent = '';
+  });
+
+  document.querySelectorAll('[data-love-share-card-close]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const modal = document.querySelector('[data-love-share-card-modal]');
+      if (modal) modal.hidden = true;
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const modal = document.querySelector('[data-love-share-card-modal]');
+    if (modal && !modal.hidden) modal.hidden = true;
+  });
+
+  document.querySelector('[data-love-share-card-save]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const status = document.querySelector('[data-love-status]');
+    const imageSrc = button?.dataset?.shareCardSrc || '';
+    const typeName = button?.dataset?.shareCardName || 'love-mobby';
+    if (!imageSrc) return;
+    try {
+      button.disabled = true;
+      const response = await fetch(imageSrc);
+      if (!response.ok) throw new Error(`Failed to download share card: ${response.status}`);
+      const blob = await response.blob();
+      const safeName = String(typeName || 'love-mobby')
+        .replace(/[\\/:*?"<>|]/g, '-')
+        .trim() || 'love-mobby';
+      downloadBlobFile(blob, `${safeName}_sharecard.webp`);
+      if (status) status.textContent = '共有カードを保存しました。';
+    } catch (error) {
+      console.warn('Failed to save Love Mobby share card.', error);
+      if (status) status.textContent = '保存できませんでした。画像を長押しして保存してください。';
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   document.querySelector('[data-love-reset]')?.addEventListener('click', () => {
     writeDiagnosisState(createInitialDiagnosisState());
     deleteLoveMobbyDiagnosisFromSupabase();

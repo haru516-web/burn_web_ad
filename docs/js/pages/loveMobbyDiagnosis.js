@@ -521,6 +521,15 @@ export function getResultImageSrc(resultType) {
   return `${pathBase}image/lovemobby/${encodeURIComponent(imageName)}`;
 }
 
+export function getShareCardImageSrc(resultType) {
+  const imageName = resultType?.typeName ? `${resultType.typeName}_sharecard.webp` : '';
+  if (!imageName) return '';
+  const pathBase = window.location.pathname.includes('/burn_two')
+    ? '/burn_two/'
+    : '/';
+  return `${pathBase}image/lovemobby_sharecard/${encodeURIComponent(imageName)}`;
+}
+
 function renderIntro() {
   return `
     <section class="love-diagnosis love-diagnosis--intro">
@@ -786,12 +795,20 @@ function renderResult(diagnosisState) {
   const resultType = result.resultType || RESULT_TYPES[result.resultCode];
   const details = getResultDetails(result);
   const resultImageSrc = getResultImageSrc(resultType);
+  const shareCardImageSrc = getShareCardImageSrc(resultType);
 
   return `
     <section class="love-diagnosis love-diagnosis--result">
       <article class="love-result-hero">
-        <div class="love-result-hero__image">
-          ${resultImageSrc ? `<img src="${resultImageSrc}" alt="${resultType.characterName}" loading="lazy" decoding="async" />` : ''}
+        <div class="love-result-hero__media">
+          <div class="love-result-hero__image">
+            ${resultImageSrc ? `<img src="${resultImageSrc}" alt="${resultType.characterName}" loading="lazy" decoding="async" />` : ''}
+          </div>
+          ${shareCardImageSrc ? `
+            <button class="button button--ghost love-share-card-toggle" type="button" data-love-share-card-toggle>
+              共有カード
+            </button>
+          ` : ''}
         </div>
         <div class="love-result-hero__copy">
           <p class="love-diagnosis__eyebrow">result ${result.resultCode}</p>
@@ -799,6 +816,18 @@ function renderResult(diagnosisState) {
           <p>${resultType.shortCopy}</p>
         </div>
       </article>
+      ${shareCardImageSrc ? `
+        <div class="love-share-card-modal" data-love-share-card-modal hidden>
+          <button class="love-share-card-modal__backdrop" type="button" data-love-share-card-close aria-label="close"></button>
+          <section class="love-share-card-dialog" role="dialog" aria-modal="true" aria-label="share card">
+            <button class="love-share-card-dialog__close" type="button" data-love-share-card-close aria-label="close">x</button>
+            <img src="${shareCardImageSrc}" alt="${resultType.typeName} share card" loading="lazy" decoding="async" data-love-share-card-image />
+          <button class="button button--primary button--full" type="button" data-love-share-card-save data-share-card-src="${shareCardImageSrc}" data-share-card-name="${resultType.typeName}">
+            保存する
+          </button>
+          </section>
+        </div>
+      ` : ''}
       ${result.straightAnswerDetected ? `
         <p class="love-diagnosis__notice">回答がかなり同じ方向に寄っています。より正確な結果を見るには、直感に近いものを選び直してみてください。</p>
       ` : ''}
