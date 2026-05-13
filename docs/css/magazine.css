@@ -554,9 +554,19 @@
 }
 
 .love-compatibility-result__head strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
   color: #a84f84;
   font-size: 18px;
   letter-spacing: 0.08em;
+}
+
+.love-compatibility-result__head strong span {
+  color: rgba(45, 34, 40, 0.7);
+  font-size: 12px;
+  letter-spacing: 0;
 }
 
 .love-compatibility-result section {

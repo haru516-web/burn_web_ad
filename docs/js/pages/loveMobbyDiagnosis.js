@@ -1,5 +1,6 @@
 import { getIcon } from '../components/icons.js';
 import compatibilitySource from '../../../love_mobby_compatibility_136.md?raw';
+import compatibilityScoreSource from '../../../love_mobby_compatibility_100_scores.md?raw';
 
 export const LOVE_MOBBY_STORAGE_KEY = 'love_mobby_diag_v1';
 export const PAGE_SIZE = 5;
@@ -224,8 +225,37 @@ function parseCompatibilitySource(source) {
 
 const COMPATIBILITY_TABLE = parseCompatibilitySource(compatibilitySource);
 
+function parseCompatibilityScoreSource(source) {
+  const entries = {};
+  let currentCode = '';
+
+  source.split(/\r?\n/).forEach((line) => {
+    const sectionMatch = line.match(/^##\s+([A-Z]{4}):/);
+    if (sectionMatch) {
+      currentCode = sectionMatch[1];
+      return;
+    }
+
+    const scoreMatch = line.match(/^- \*\*([A-Z]{4}): [^*]+\*\*｜\*\*(\d{1,3})点\*\*/);
+    if (!currentCode || !scoreMatch) return;
+
+    const [, partnerCode, score] = scoreMatch;
+    entries[normalizeCompatibilityPair(currentCode, partnerCode)] = Number(score);
+  });
+
+  return entries;
+}
+
+const COMPATIBILITY_SCORE_TABLE = parseCompatibilityScoreSource(compatibilityScoreSource);
+
 function getCompatibilityResult(firstCode, secondCode) {
-  return COMPATIBILITY_TABLE[normalizeCompatibilityPair(firstCode, secondCode)] || null;
+  const pairKey = normalizeCompatibilityPair(firstCode, secondCode);
+  const result = COMPATIBILITY_TABLE[pairKey] || null;
+  if (!result) return null;
+  return {
+    ...result,
+    score: COMPATIBILITY_SCORE_TABLE[pairKey] || null,
+  };
 }
 
 const typeDetails = {
@@ -596,7 +626,7 @@ export function renderCompatibilityResult(firstCode = 'HLTO', secondCode = 'HLTO
             <figcaption><span>${secondType.code}</span>${secondType.typeName}</figcaption>
           </figure>
         </div>
-        <strong>${result.stars}</strong>
+        <strong>${result.stars}${result.score ? `<span>${result.score} / 100点</span>` : ''}</strong>
       </div>
       <section>
         <h4>良いところ</h4>

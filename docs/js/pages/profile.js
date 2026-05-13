@@ -88,8 +88,7 @@ function renderMagazineCard(posts = []) {
             <img src="./image/magazine_cover/page.jpg" alt="" />
           </span>
           <span class="futari-dashboard-magazine__paper futari-dashboard-magazine__paper--front">
-            <span>Our<br />Story</span>
-            <img src="./image/magazine_cover/cover.png" alt="" />
+            <img src="./image/magazine_cover/cover_main.png" alt="" />
           </span>
           <span class="futari-dashboard-magazine__vol">vol.<b>01</b></span>
         </span>
