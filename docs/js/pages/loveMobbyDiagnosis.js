@@ -756,8 +756,8 @@ function renderQuiz(diagnosisState) {
         `).join('')}
       </div>
       <div class="love-diagnosis__nav">
-        <button class="button button--ghost" type="button" data-love-page-prev ${page <= 0 ? 'disabled' : ''}>前へ</button>
         <button class="button button--primary" type="button" data-love-page-next ${canGoNext ? '' : 'disabled'}>${isLastPage ? '結果を見る' : '次へ'}</button>
+        <button class="button button--ghost" type="button" data-love-page-prev ${page <= 0 ? 'disabled' : ''}>前へ</button>
       </div>
     </section>
   `;
