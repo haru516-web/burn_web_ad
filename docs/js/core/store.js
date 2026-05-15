@@ -1,6 +1,28 @@
 ﻿import { loadState, saveState, setStorageScope } from '../utils/storage.js';
 import { createId } from '../utils/id.js';
 
+const TODO_DONE_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+function isExpiredDoneTodo(todo, now = Date.now()) {
+  if (!todo?.done || !todo.doneAt) return false;
+  const doneTime = Date.parse(todo.doneAt);
+  return Number.isFinite(doneTime) && now - doneTime >= TODO_DONE_RETENTION_MS;
+}
+
+function normalizeCoupleTodo(todo) {
+  const done = Boolean(todo.done);
+  return {
+    id: todo.id || createId('todo'),
+    title: todo.title || 'やりたいこと',
+    note: todo.note || '',
+    done,
+    doneAt: done ? (todo.doneAt || todo.done_at || todo.updatedAt || todo.updated_at || new Date().toISOString()) : '',
+    authorId: todo.authorId || todo.author_id || '',
+    authorName: todo.authorName || '',
+    createdAt: todo.createdAt || todo.created_at || new Date().toISOString(),
+  };
+}
+
 const defaultState = {
   profile: {
     name: 'you',
@@ -198,17 +220,9 @@ function normalizeState(saved) {
         }))
         : [],
       todos: Array.isArray(savedCouple.todos)
-        ? savedCouple.todos.map((todo) => ({
-          id: todo.id || createId('todo'),
-          title: todo.title || 'やりたいこと',
-          note: todo.note || '',
-          done: Boolean(todo.done),
-          authorId: todo.authorId || '',
-          authorName: todo.authorName || '',
-          createdAt: todo.createdAt || new Date().toISOString(),
-        }))
+        ? savedCouple.todos.map(normalizeCoupleTodo).filter((todo) => !isExpiredDoneTodo(todo))
         : structuredClone(defaultState.couple.todos).map((todo) => ({
-          ...todo,
+          ...normalizeCoupleTodo(todo),
           createdAt: new Date().toISOString(),
         })),
     },
@@ -564,15 +578,7 @@ export function replaceCoupleDatabaseData({
   }
 
   if (Array.isArray(todos)) {
-    next.couple.todos = todos.map((todo) => ({
-      id: todo.id || createId('todo'),
-      title: todo.title || 'やりたいこと',
-      note: todo.note || '',
-      done: Boolean(todo.done),
-      authorId: todo.authorId || '',
-      authorName: todo.authorName || '',
-      createdAt: todo.createdAt || new Date().toISOString(),
-    }));
+    next.couple.todos = todos.map(normalizeCoupleTodo).filter((todo) => !isExpiredDoneTodo(todo));
   }
 
   if (profileSheet && typeof profileSheet === 'object') {
@@ -712,6 +718,7 @@ export function toggleCoupleTodo(todoId) {
   const todo = next.couple.todos.find((item) => item.id === todoId);
   if (!todo) return;
   todo.done = !todo.done;
+  todo.doneAt = todo.done ? new Date().toISOString() : '';
   commit(next);
 }
 
@@ -728,6 +735,7 @@ export function addCoupleTodo(todo) {
     title,
     note: String(todo?.note || '').trim(),
     done: false,
+    doneAt: '',
     authorId: todo?.authorId || '',
     authorName: String(todo?.authorName || state.profile?.name || 'you').trim() || 'you',
     createdAt: new Date().toISOString(),
@@ -744,4 +752,16 @@ export function deleteCoupleTodo(todoId) {
     ? next.couple.todos.filter((todo) => todo.id !== todoId)
     : [];
   commit(next);
+}
+
+export function pruneExpiredCoupleTodos(now = Date.now()) {
+  const todos = Array.isArray(state.couple?.todos) ? state.couple.todos : [];
+  const expired = todos.filter((todo) => isExpiredDoneTodo(todo, now));
+  if (!expired.length) return [];
+  const expiredIds = new Set(expired.map((todo) => todo.id));
+  const next = structuredClone(state);
+  next.couple = next.couple || structuredClone(defaultState.couple);
+  next.couple.todos = todos.filter((todo) => !expiredIds.has(todo.id));
+  commit(next);
+  return expired;
 }

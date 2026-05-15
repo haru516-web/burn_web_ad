@@ -108,6 +108,7 @@ export async function listCoupleTodos({ storageScope = 'shared' } = {}) {
     title: row.title || '',
     note: row.note || '',
     done: Boolean(row.done),
+    doneAt: row.done_at || '',
     authorId: row.author_id || '',
     authorName: row.profiles?.display_name || row.profiles?.email || '',
     createdAt: row.created_at || new Date().toISOString(),
@@ -118,20 +119,30 @@ export async function saveCoupleTodo(todo, { storageScope = 'shared' } = {}) {
   if (!todo?.id) return null;
   const client = requireSupabase();
   const { user, memorySpaceId, displayScope } = await getCoupleDataContext(storageScope);
-  const { data, error } = await client
+  const payload = {
+    id: todo.id,
+    space_id: memorySpaceId,
+    author_id: user.id,
+    display_scope: displayScope,
+    title: todo.title || '',
+    note: todo.note || '',
+    done: Boolean(todo.done),
+    done_at: todo.done ? (todo.doneAt || new Date().toISOString()) : null,
+    updated_at: new Date().toISOString(),
+  };
+  let { data, error } = await client
     .from('couple_todos')
-    .upsert({
-      id: todo.id,
-      space_id: memorySpaceId,
-      author_id: user.id,
-      display_scope: displayScope,
-      title: todo.title || '',
-      note: todo.note || '',
-      done: Boolean(todo.done),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' })
+    .upsert(payload, { onConflict: 'id' })
     .select('*')
     .single();
+  if (error && /done_at/i.test(String(error.message || error.details || ''))) {
+    const { done_at: _doneAt, ...legacyPayload } = payload;
+    ({ data, error } = await client
+      .from('couple_todos')
+      .upsert(legacyPayload, { onConflict: 'id' })
+      .select('*')
+      .single());
+  }
   if (error) throw error;
   return data;
 }

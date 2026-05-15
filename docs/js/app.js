@@ -1,7 +1,7 @@
 import { renderBottomNav } from './components/bottomNav.js';
 import { renderCommentsModal } from './components/modals.js';
 import { getIcon } from './components/icons.js';
-import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, replaceCoupleDatabaseData, markAllContentPersonal, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, deleteRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, updateCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo } from './core/store.js';
+import { getState, switchStateScope, addPost, upsertPostCache, replaceCompletedPostCache, replaceRecordMemories, replaceCoupleDatabaseData, markAllContentPersonal, updatePost, deletePost, toggleLike, toggleSave, addComment, addImpression, updateProfile, updateCoupleSettings, toggleFollow, saveIssue, upsertDraft, deleteDraft, addRecordMemory, updateRecordMemory, deleteRecordMemory, updateCoupleAnswer, addCoupleCalendarEntry, updateCoupleCalendarEntry, deleteCoupleCalendarEntry, resetCoupleAnswers, toggleCoupleTodo, addCoupleTodo, deleteCoupleTodo, pruneExpiredCoupleTodos } from './core/store.js';
 import { renderOpening } from './pages/opening.js';
 import { renderInvite } from './pages/invite.js';
 import { renderHome, renderTimeline } from './pages/timeline.js';
@@ -1038,6 +1038,10 @@ async function syncCoupleDataFromSupabase(storageScope = 'shared') {
     }
 
     replaceCoupleDatabaseData({ calendarEntries, todos, profileSheet, coupleSettings });
+    const expiredTodos = pruneExpiredCoupleTodos();
+    if (expiredTodos.length) {
+      await Promise.allSettled(expiredTodos.map((todo) => deleteCoupleTodoFromDatabase(todo.id)));
+    }
     return true;
   } catch (error) {
     console.warn('Failed to load couple data from Supabase. Using local cache.', error);
@@ -1359,6 +1363,10 @@ function renderRecordPostingOverlay() {
 function renderScreen() {
   const screenArea = document.getElementById('screenArea');
   if (!screenArea) return;
+  const expiredTodos = pruneExpiredCoupleTodos();
+  if (expiredTodos.length) {
+    expiredTodos.forEach((todo) => deleteCoupleTodoFromSupabase(todo.id));
+  }
   const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera';
   const isLiveRecordCameraStage = isRecordCameraStage && !uiState.recordDraft?.imageData;
   const bottomNavScreens = ['home', 'timeline', 'search', 'record', 'magazine', 'profile', 'compose', 'post', 'photo'];

@@ -306,6 +306,7 @@ create table if not exists public.couple_todos (
   title text not null default '',
   note text not null default '',
   done boolean not null default false,
+  done_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -317,6 +318,7 @@ alter table public.couple_todos
   add column if not exists title text not null default '',
   add column if not exists note text not null default '',
   add column if not exists done boolean not null default false,
+  add column if not exists done_at timestamptz,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 
