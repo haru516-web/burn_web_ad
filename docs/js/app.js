@@ -153,6 +153,7 @@ const uiState = {
   recordPhotoFeather: true,
   recordTitle: '',
   recordPostingOverlay: null,
+  recordMemorySaving: false,
   recordDraft: null,
   recordSelectedIds: [],
   recordEditingId: null,
@@ -9544,7 +9545,8 @@ function bindRecordEvents() {
     renderScreen();
   });
 
-  document.querySelector('[data-record-save]')?.addEventListener('click', async () => {
+  document.querySelector('[data-record-save]')?.addEventListener('click', async (event) => {
+    if (uiState.recordMemorySaving) return;
     const draft = uiState.recordDraft || {};
     if (!draft.imageData || !draft.reviewConfirmed) return;
     const memoryInput = {
@@ -9563,22 +9565,36 @@ function bindRecordEvents() {
       window.alert('場所と感想を入力してください。');
       return;
     }
+    uiState.recordMemorySaving = true;
+    const saveButton = event.currentTarget;
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.setAttribute('aria-busy', 'true');
+    }
     memoryInput.tags = buildPhotoTagsFromMeta(memoryInput);
     let saved = null;
     try {
-      saved = addRecordMemory(await savePhotoAsset(memoryInput));
-    } catch (error) {
-      console.warn('Failed to save photo asset to Supabase. Falling back to local cache.', error);
-      saved = addRecordMemory(memoryInput);
+      try {
+        saved = addRecordMemory(await savePhotoAsset(memoryInput));
+      } catch (error) {
+        console.warn('Failed to save photo asset to Supabase. Falling back to local cache.', error);
+        saved = addRecordMemory(memoryInput);
+      }
+      backupRecordMemory(saved).catch((error) => {
+        console.warn('Failed to back up record memory image.', error);
+      });
+      stopRecordCameraStream();
+      uiState.recordDraft = null;
+      uiState.recordStage = 'select';
+      uiState.recordSelectedIds = [saved.id];
+      render();
+    } finally {
+      uiState.recordMemorySaving = false;
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.removeAttribute('aria-busy');
+      }
     }
-    backupRecordMemory(saved).catch((error) => {
-      console.warn('Failed to back up record memory image.', error);
-    });
-    stopRecordCameraStream();
-    uiState.recordDraft = null;
-    uiState.recordStage = 'select';
-    uiState.recordSelectedIds = [saved.id];
-    render();
   });
 
   document.querySelector('[data-record-save-photo]')?.addEventListener('click', async () => {

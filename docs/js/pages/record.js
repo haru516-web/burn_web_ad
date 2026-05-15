@@ -241,7 +241,7 @@ function renderRecordHome(memories, recordDate = '') {
   `;
 }
 
-function renderRecordCamera(draft) {
+function renderRecordCamera(draft, isSaving = false) {
   const hasPhoto = Boolean(draft?.imageData);
   const isPhotoConfirmed = Boolean(draft?.reviewConfirmed);
   const activeFilter = draft?.filter || 'none';
@@ -351,7 +351,7 @@ function renderRecordCamera(draft) {
             ${getIcon('image')} アルバム
           </button>
           <button class="record-shutter" type="button" data-record-open-camera-input aria-label="写真を撮る"></button>
-          <button class="record-secondary-button record-save-button" type="button" data-record-save ${hasPhoto ? '' : 'disabled'}>保存</button>
+          <button class="record-secondary-button record-save-button" type="button" data-record-save ${hasPhoto && !isSaving ? '' : 'disabled'} ${isSaving ? 'aria-busy="true"' : ''}>${isSaving ? '保存中' : '保存'}</button>
         </div>
         ${hasPhoto ? '<button class="record-photo-download" type="button" data-record-save-photo>写真だけ保存</button>' : ''}
         `}
@@ -646,7 +646,7 @@ export function renderRecord(state, uiState) {
   });
   const stage = uiState.recordStage || 'home';
 
-  if (stage === 'camera') return renderRecordCamera(uiState.recordDraft || {});
+  if (stage === 'camera') return renderRecordCamera(uiState.recordDraft || {}, Boolean(uiState.recordMemorySaving));
   if (stage === 'edit') return renderRecordEdit(memories.find((memory) => memory.id === uiState.recordEditingId));
   const photoFeather = uiState.recordPhotoFeather !== false;
   if (stage === 'select') return renderRecordSelect(memories, uiState.recordSelectedIds || [], uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '', photoFeather);
