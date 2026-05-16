@@ -636,7 +636,9 @@ function renderSelectionScreen({ values, selectedId, selectedBackground }) {
         <section class="compose-select-rail">
           ${selectionMode === 'custom' ? '' : renderTemplatePicker(fixedSelectionId)}
           <div class="compose-select-rail__footer">
-            <button class="button button--primary compose-confirm-button" type="button" data-compose-stage-nav="edit">Edit</button>
+            <button class="button button--primary compose-confirm-button" type="button" data-compose-stage-nav="edit">
+              ${selectionMode === 'custom' ? 'カスタムで編集' : 'このテンプレで編集'}
+            </button>
           </div>
         </section>
       </section>

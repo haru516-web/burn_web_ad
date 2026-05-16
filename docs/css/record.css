@@ -57,6 +57,30 @@
   letter-spacing: 0;
 }
 
+.record-header__title-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+}
+
+.record-header__compose-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(83, 70, 61, 0.11);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.64);
+  color: rgba(83, 70, 61, 0.72);
+}
+
+.record-header__compose-link svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
 .record-today-mark {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

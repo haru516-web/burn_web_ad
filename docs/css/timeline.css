@@ -2596,6 +2596,43 @@
   line-height: 1.8;
 }
 
+.couple-album-brand-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.couple-album-brand-row .couple-brand {
+  grid-column: 2;
+  margin-bottom: 0;
+}
+
+.couple-album-search-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(83, 70, 61, 0.11);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.64);
+  color: rgba(83, 70, 61, 0.72);
+}
+
+.couple-album-search-button.is-active {
+  border-color: rgba(171, 115, 75, 0.24);
+  background: rgba(244, 234, 226, 0.78);
+  color: #ab734b;
+}
+
+.couple-album-search-button svg,
+.couple-album-tag-search__field button svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
 .couple-album-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2653,6 +2690,37 @@
   background: #fffdf9;
   color: #211d19;
   padding: 0 14px;
+}
+
+.couple-album-tag-search__field {
+  position: relative;
+  display: block;
+}
+
+.couple-album-tag-search__field input {
+  width: 100%;
+  padding-right: 46px;
+}
+
+.couple-album-tag-search__field button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #6d5b52;
+}
+
+.couple-album-search-empty {
+  margin: 18px 0 0;
+  color: #74675d;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
 }
 
 .couple-album-page__tags,

@@ -100,6 +100,27 @@ function renderBrand() {
   `;
 }
 
+function renderAlbumBrand(searchOpen = false, query = '') {
+  const escapedQuery = escapeHtml(query);
+  return `
+    <div class="couple-album-brand-row">
+      ${renderBrand()}
+      <button class="couple-album-search-button ${searchOpen ? 'is-active' : ''}" type="button" data-album-search-toggle aria-label="タグで検索" aria-expanded="${searchOpen}">
+        ${getIcon(searchOpen ? 'close' : 'search')}
+      </button>
+    </div>
+    ${searchOpen ? `
+      <label class="couple-album-tag-search">
+        <span>タグ検索</span>
+        <span class="couple-album-tag-search__field">
+          <input type="search" data-album-tag-search value="${escapedQuery}" placeholder="場所・値段・雰囲気・天気・気分" />
+          <button type="button" data-album-search-clear aria-label="検索をクリア" ${query ? '' : 'hidden'}>${getIcon('close')}</button>
+        </span>
+      </label>
+    ` : ''}
+  `;
+}
+
 function getTodayDateKey() {
   const date = new Date();
   return formatDateKey(date.getFullYear(), date.getMonth() + 1, date.getDate());
@@ -587,7 +608,7 @@ function renderPageListEntry(post, activePageScope = 'shared') {
   const moveTarget = activePageScope === 'personal' ? 'shared' : 'personal';
   const moveLabel = moveTarget === 'personal' ? '個人に表示' : '共有に表示';
   return `
-    <article class="couple-album-page">
+    <article class="couple-album-page" data-album-search-text="${escapeHtml(getAlbumPageSearchText(post))}">
       <button class="couple-album-page__image" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
         ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
       </button>
@@ -610,7 +631,7 @@ function renderPhotoListEntry(memory) {
   const photoId = String(memory.id || '');
   const tags = Array.isArray(memory.tags) ? memory.tags.slice(0, 5) : [];
   return `
-    <article class="couple-album-page couple-album-page--photo">
+    <article class="couple-album-page couple-album-page--photo" data-album-search-text="${escapeHtml(getAlbumPhotoSearchText(memory))}">
       <button class="couple-album-page__image" type="button" data-open-photo-preview="${photoId}" aria-label="写真を開く">
         ${memory.imageData ? `<img src="${memory.imageData}" alt="" />` : '<span>photo</span>'}
       </button>
@@ -620,6 +641,36 @@ function renderPhotoListEntry(memory) {
       </div>
     </article>
   `;
+}
+
+function getAlbumPageSearchText(post) {
+  return [
+    ...(post.composeData?.recordPhotoTags || []),
+    ...(post.recordPhotoTags || []),
+    ...(post.freeTags || []),
+    ...(post.fixedTags || []),
+  ]
+    .map((tag) => String(tag || '').trim())
+    .filter(Boolean)
+    .filter((tag) => !['record', 'completed'].includes(tag.toLowerCase()))
+    .join(' ')
+    .toLowerCase();
+}
+
+function getAlbumPhotoSearchText(memory) {
+  return [
+    memory.place,
+    memory.price,
+    memory.timeOfDay,
+    memory.atmosphere,
+    memory.weather,
+    memory.mood,
+    ...(Array.isArray(memory.tags) ? memory.tags : []),
+  ]
+    .map((tag) => String(tag || '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 }
 
 function renderAlbumEmpty(type = 'pages') {
@@ -644,6 +695,7 @@ function renderPageList(state, uiState = {}) {
   const activePageScope = !hasPartner || uiState.albumPageScope === 'personal' ? 'personal' : 'shared';
   const activePhotoScope = !hasPartner || uiState.albumPhotoScope === 'personal' ? 'personal' : 'shared';
   const albumTagQuery = String(uiState.albumTagQuery || '').trim().toLowerCase();
+  const albumSearchOpen = Boolean(uiState.albumSearchOpen || albumTagQuery);
   const posts = (state.posts || [])
     .filter((post) => {
       if (activeAlbumTab !== 'pages') return true;
@@ -651,6 +703,7 @@ function renderPageList(state, uiState = {}) {
       if (!String(post.id || '').startsWith('completed_')) return activePageScope === 'shared';
       return (post.storageScope || 'shared') === activePageScope;
     })
+    .filter((post) => !albumTagQuery || getAlbumPageSearchText(post).includes(albumTagQuery))
     .slice()
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const photos = (state.recordMemories || [])
@@ -662,23 +715,14 @@ function renderPageList(state, uiState = {}) {
     })
     .filter((memory) => {
       if (!albumTagQuery) return true;
-      const haystack = [
-        memory.place,
-        memory.price,
-        memory.timeOfDay,
-        memory.atmosphere,
-        memory.weather,
-        memory.mood,
-        ...(Array.isArray(memory.tags) ? memory.tags : []),
-      ].join(' ').toLowerCase();
-      return haystack.includes(albumTagQuery);
+      return getAlbumPhotoSearchText(memory).includes(albumTagQuery);
     })
     .slice()
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const items = activeAlbumTab === 'photo' ? photos : posts;
 
   return `
-    ${renderBrand()}
+    ${renderAlbumBrand(albumSearchOpen, uiState.albumTagQuery || '')}
     <header class="couple-page-title">
       <h1>pages</h1>
       <p>作成済みページを一覧で確認できます。</p>
@@ -699,13 +743,7 @@ function renderPageList(state, uiState = {}) {
         <button class="${activePhotoScope === 'personal' ? 'is-active' : ''}" type="button" data-album-photo-scope="personal" role="tab" aria-selected="${activePhotoScope === 'personal'}">個人写真</button>
       </div>
     ` : ''}
-    ${activeAlbumTab === 'photo' ? `
-      <label class="couple-album-tag-search">
-        <span>タグ検索</span>
-        <input type="search" data-album-tag-search value="${escapeHtml(uiState.albumTagQuery || '')}" placeholder="場所・値段・雰囲気・天気・気分" />
-      </label>
-    ` : ''}
-    <section class="couple-date-list-page couple-album-grid">
+    <section class="couple-date-list-page couple-album-grid" data-album-results>
       ${items.length
         ? (activeAlbumTab === 'photo' ? photos.map(renderPhotoListEntry).join('') : posts.map((post) => renderPageListEntry(post, activePageScope)).join(''))
         : `
@@ -719,6 +757,7 @@ function renderPageList(state, uiState = {}) {
           </section>
         `}
     </section>
+    ${items.length ? '<p class="couple-album-search-empty" data-album-search-empty hidden>一致するタグはありません</p>' : ''}
   `;
 }
 

@@ -110,6 +110,7 @@ const uiState = {
   albumPageScope: 'shared',
   albumPhotoScope: 'shared',
   albumTagQuery: '',
+  albumSearchOpen: false,
   composeSaveScope: 'shared',
   recordSaveScope: 'shared',
   todoInputOpen: false,
@@ -141,6 +142,7 @@ const uiState = {
   composeWorkingDraft: null,
   composePreparedImageData: null,
   composePreparedImageDirty: true,
+  composeOpenedFromRecord: false,
   openingTapGuardUntil: 0,
   photoReturnState: null,
   postReturnScreen: 'timeline',
@@ -1492,6 +1494,7 @@ function navigate(screen) {
     uiState.composeWorkingDraft = null;
     uiState.composePreparedImageData = null;
     uiState.composePreparedImageDirty = true;
+    uiState.composeOpenedFromRecord = false;
     uiState.composeReturnState = null;
   }
   if (screen !== 'record') {
@@ -2909,6 +2912,25 @@ function bindSearchEvents() {
   bindPostInteractions(document.getElementById('screenArea'));
   bindScreenScrollSurfaces();
   const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
+  const applyAlbumTagFilter = (query = '') => {
+    const normalizedQuery = String(query || '').trim().toLowerCase();
+    let visibleCount = 0;
+    document.querySelectorAll('[data-album-search-text]').forEach((item) => {
+      const searchText = String(item.dataset.albumSearchText || '').toLowerCase();
+      const isHidden = Boolean(normalizedQuery && !searchText.includes(normalizedQuery));
+      item.hidden = isHidden;
+      if (!isHidden) visibleCount += 1;
+    });
+    const emptyMessage = document.querySelector('[data-album-search-empty]');
+    if (emptyMessage) {
+      emptyMessage.hidden = !normalizedQuery || visibleCount > 0;
+    }
+    const clearButton = document.querySelector('[data-album-search-clear]');
+    if (clearButton) {
+      clearButton.hidden = !normalizedQuery;
+    }
+  };
+
   if (!hasPartner) {
     uiState.albumPageScope = 'personal';
     uiState.albumPhotoScope = 'personal';
@@ -2999,9 +3021,23 @@ function bindSearchEvents() {
     });
   });
 
-  document.querySelector('[data-album-tag-search]')?.addEventListener('change', (event) => {
-    uiState.albumTagQuery = String(event.target.value || '');
+  document.querySelector('[data-album-search-toggle]')?.addEventListener('click', () => {
+    uiState.albumSearchOpen = !uiState.albumSearchOpen;
     renderScreen();
+  });
+
+  document.querySelector('[data-album-search-clear]')?.addEventListener('click', () => {
+    uiState.albumTagQuery = '';
+    uiState.albumSearchOpen = true;
+    renderScreen();
+  });
+
+  document.querySelector('[data-album-tag-search]')?.addEventListener('input', (event) => {
+    const nextQuery = String(event.target.value || '');
+    if (uiState.albumTagQuery === nextQuery) return;
+    uiState.albumTagQuery = nextQuery;
+    uiState.albumSearchOpen = true;
+    applyAlbumTagFilter(nextQuery);
   });
 
   document.querySelectorAll('[data-album-page-scope]').forEach((button) => {
@@ -3380,6 +3416,12 @@ function bindSearchEvents() {
 function bindScreenNavigationEvents() {
   document.querySelectorAll('[data-home-nav]').forEach((button) => {
     button.addEventListener('click', async () => {
+      if (button.dataset.homeNav === 'compose') {
+        uiState.composeOpenedFromRecord = uiState.screen === 'record' || button.hasAttribute('data-compose-from-record');
+        if (uiState.composeOpenedFromRecord) {
+          uiState.composeSaveScope = uiState.recordSaveScope || uiState.composeSaveScope || 'shared';
+        }
+      }
       if (button.hasAttribute('data-bottom-album')) {
         const hasPartner = Boolean(uiState.partnerProfile?.hasPartner);
         const albumPageScope = hasPartner ? (uiState.albumPageScope || 'shared') : 'personal';
@@ -4812,6 +4854,31 @@ function bindComposeEvents() {
   }
 
   const switchComposeStage = async (nextStage) => {
+    if (composeStage === 'select' && nextStage === 'edit') {
+      const selectedTemplateId = String(
+        composeRoot.querySelector('input[name="templateId"]:checked')?.value
+        || composeSheet?.dataset.template
+        || uiState.composeTemplateId
+        || DEFAULT_COMPOSE_TEMPLATE,
+      );
+      const nextDraft = createComposeWorkingDraft({
+        ...(uiState.composeWorkingDraft || composeDraft || {}),
+        templateId: selectedTemplateId,
+        backgroundColor: '#ffffff',
+        fixedLayout: createComposeFixedLayoutState(
+          uiState.composeWorkingDraft?.fixedLayout || composeDraft?.fixedLayout,
+          selectedTemplateId,
+        ),
+      });
+      uiState.composeTemplateId = selectedTemplateId;
+      uiState.composeBackgroundColor = '#ffffff';
+      uiState.composeWorkingDraft = nextDraft;
+      uiState.composePreparedImageData = null;
+      uiState.composePreparedImageDirty = true;
+      uiState.composeStage = 'edit';
+      render();
+      return;
+    }
     const draftSnapshot = await finalizeComposeDraftSnapshot();
     if (nextStage === 'tags' && composeStage === 'edit') {
       const values = buildComposeRenderValues(draftSnapshot);
@@ -8080,37 +8147,47 @@ function bindComposeEvents() {
     const imageData = uiState.composePreparedImageData;
     if (!imageData) return;
     const profileName = String(getState().profile?.name || 'you').trim() || 'you';
+    const openedFromRecord = Boolean(uiState.composeOpenedFromRecord);
+    const submitFixedTags = openedFromRecord
+      ? Array.from(new Set(['record', ...(draftSnapshot.fixedTags || [])]))
+      : draftSnapshot.fixedTags;
+    const submitStorageScope = openedFromRecord
+      ? resolveStorageScope(uiState.recordSaveScope)
+      : (uiState.composeSaveScope || 'shared');
 
     if (uiState.composeEditingPostId) {
       updatePost(uiState.composeEditingPostId, {
         caption: buildComposeCaption(values),
         imageData,
-        fixedTags: draftSnapshot.fixedTags,
+        fixedTags: submitFixedTags,
         freeTags: draftSnapshot.freeTags,
         composeData: {
           ...values,
-          fixedTags: draftSnapshot.fixedTags,
+          fixedTags: submitFixedTags,
           freeTags: draftSnapshot.freeTags,
           standardFiles: draftSnapshot.standardFiles,
+          source: openedFromRecord ? 'record' : values.source,
+          storageScope: submitStorageScope,
         },
       });
     } else {
       const composeData = {
         ...values,
-        fixedTags: draftSnapshot.fixedTags,
+        fixedTags: submitFixedTags,
         freeTags: draftSnapshot.freeTags,
         standardFiles: draftSnapshot.standardFiles,
-        storageScope: uiState.composeSaveScope || 'shared',
+        source: openedFromRecord ? 'record' : values.source,
+        storageScope: submitStorageScope,
       };
       try {
         const completedPage = await saveCompletedPageToSupabase({
-          pageId: `compose_${Date.now()}`,
+          pageId: `${openedFromRecord ? 'record_compose' : 'compose'}_${Date.now()}`,
           title: buildComposeCaption(values),
           imageData,
           composeData,
-          fixedTags: draftSnapshot.fixedTags,
+          fixedTags: submitFixedTags,
           freeTags: draftSnapshot.freeTags,
-          storageScope: uiState.composeSaveScope || 'shared',
+          storageScope: submitStorageScope,
         });
         upsertPostCache(completedPageToLocalPost(completedPage, profileName));
       } catch (error) {
@@ -8119,9 +8196,9 @@ function bindComposeEvents() {
           authorName: profileName,
           caption: buildComposeCaption(values),
           imageData,
-          fixedTags: draftSnapshot.fixedTags,
+          fixedTags: submitFixedTags,
           freeTags: draftSnapshot.freeTags,
-          storageScope: uiState.composeSaveScope || 'shared',
+          storageScope: submitStorageScope,
           composeData,
         });
       }
@@ -8138,6 +8215,7 @@ function bindComposeEvents() {
     uiState.composeWorkingDraft = null;
     uiState.composePreparedImageData = null;
     uiState.composePreparedImageDirty = true;
+    uiState.composeOpenedFromRecord = false;
     render();
   });
 }

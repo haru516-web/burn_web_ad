@@ -218,7 +218,13 @@ function renderRecordHome(memories, recordDate = '') {
   return `
     <section class="record-page record-page--home">
       <header class="record-header">
-        <p class="record-header__title">記録</p>
+        <div class="record-header__title-row">
+          <span aria-hidden="true"></span>
+          <p class="record-header__title">記録</p>
+          <button class="record-header__compose-link" type="button" data-home-nav="compose" data-compose-from-record aria-label="テンプレート・カスタム編集を開く">
+            ${getIcon('edit')}
+          </button>
+        </div>
         <div class="record-today-mark"><span></span><strong>TODAY</strong><span></span></div>
       </header>
 
