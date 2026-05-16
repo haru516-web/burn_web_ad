@@ -5265,7 +5265,7 @@ function bindComposeEvents() {
 
   function shouldClampEditable(element) {
     const templateId = composeSheet?.dataset.template;
-    return !(element?.dataset.editable === 'text' && (templateId === 'page4' || templateId === 'page5'));
+    return !(element?.dataset.editable === 'text' && (templateId === 'page3' || templateId === 'page4' || templateId === 'page5'));
   }
 
   function shouldUseBoxLimit(element) {
