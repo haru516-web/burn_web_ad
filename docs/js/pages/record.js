@@ -7,6 +7,7 @@ import {
   RECORD_BACKGROUNDS,
   RECORD_TEMPLATES,
 } from '../templates/recordTemplates.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 function escapeHtml(value = '') {
   return String(value)
@@ -143,7 +144,7 @@ function renderMemoryCards(memories) {
       ${memories.map((memory) => `
         <article class="record-memory-card">
           <time>${escapeHtml(memory.time)}</time>
-          <img src="${memory.imageData}" alt="" />
+          <img src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />
           <div>
             <strong>${getIcon('pin')} ${escapeHtml(memory.place || '場所未設定')}</strong>
             <p>${escapeHtml(memory.memo || 'メモはまだありません。')}</p>
@@ -171,7 +172,7 @@ function renderRecordPreviewCard(memories) {
           ${previewMemories.map((memory) => `
             <article>
               <time>${escapeHtml(memory.time)}</time>
-              <img src="${memory.imageData}" alt="" />
+              <img src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />
               <span>${getIcon('pin')} ${escapeHtml(memory.place || 'Tokyo')}</span>
             </article>
           `).join('')}
@@ -197,7 +198,7 @@ function renderRecordHomeAlbumPhotos(albumPhotos = []) {
           ${photos.map((memory) => `
             <article class="record-home-album-photo couple-album-page couple-album-page--photo">
               <button class="record-home-album-photo__image couple-album-page__image" type="button" data-open-photo-preview="${memory.id}" aria-label="写真を開く">
-                <img src="${memory.imageData}" alt="" />
+                <img src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />
               </button>
               <div class="couple-album-page__meta">
                 <p class="couple-kicker">${new Date(memory.createdAt || Date.now()).toLocaleDateString('ja-JP').replace(/\//g, '.')}</p>
@@ -241,7 +242,7 @@ function renderRecordHome(memories, recordDate = '') {
               ${getIcon('camera')} カメラを起動
             </button>
           ` : ''}
-          <button class="record-primary-button record-create-page-button" type="button" data-record-stage="select" ${memories.length ? '' : 'disabled aria-disabled="true"'}>${getIcon('bookOpen')} &#12506;&#12540;&#12472;&#12434;&#20316;&#12427;</button>
+          <button class="record-primary-button record-create-page-button" type="button" data-record-stage="select">${getIcon('bookOpen')} &#12506;&#12540;&#12472;&#12434;&#20316;&#12427;</button>
         </div>
       </section>
       ${renderRecordHomeAlbumPhotos(memories)}
@@ -274,7 +275,7 @@ function renderRecordCamera(draft, isSaving = false) {
       <div class="record-camera-stage record-camera-stage--${activeFrame} ${hasPhoto ? 'has-photo' : ''} ${hasPhoto && !isPhotoConfirmed ? 'is-reviewing' : ''} ${hasPhoto && isPhotoConfirmed ? 'is-inputting' : ''}">
         <div class="record-camera-preview record-camera-preview--${activeFrame} ${hasPhoto ? 'has-photo' : ''} ${hasPhoto && !isPhotoConfirmed ? 'is-reviewing' : ''} ${hasPhoto && isPhotoConfirmed ? 'is-inputting' : ''}">
         ${hasPhoto
-          ? `<img class="record-filter-${escapeHtml(activeFilter)}" src="${draft.imageData}" alt="" />`
+          ? `<img class="record-filter-${escapeHtml(activeFilter)}" src="${draft.imageData}" alt="" ${imageLoadingAttrs()} />`
           : `<button class="record-frame-switch" type="button" data-record-switch-frame aria-label="写真枠を切り替え">
                <span>${activeFrame === 'portrait' ? '縦' : '横'}</span>
              </button>
@@ -381,7 +382,7 @@ function renderRecordEdit(memory) {
       </header>
 
       <article class="record-edit-card">
-        <img src="${memory.imageData}" alt="" />
+        <img src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />
         <div class="record-edit-card__time">${getIcon('clock')} <strong>${escapeHtml(memory.time)}</strong></div>
         <label class="record-field">
           <span>場所 <em>必須</em></span>
@@ -438,7 +439,7 @@ function renderRecordTemplatePicker(selectedTemplateId = DEFAULT_RECORD_TEMPLATE
       <div class="record-template-grid" data-record-template-grid>
         ${RECORD_TEMPLATES.map((template) => `
           <button class="record-template-option ${selectedTemplateId === template.id ? 'is-selected' : ''}" type="button" data-record-template="${template.id}">
-            <img src="${template.src}" alt="${template.label}" />
+            <img src="${template.src}" alt="${template.label}" ${imageLoadingAttrs()} />
             <span>${template.label}</span>
           </button>
         `).join('')}
@@ -458,7 +459,7 @@ function renderRecordBackgroundPicker(selectedBackgroundId = DEFAULT_RECORD_BACK
         ${RECORD_BACKGROUNDS.map((background) => `
           <button class="record-background-option ${selectedBackgroundId === background.id ? 'is-selected' : ''}" type="button" data-record-background="${background.id}">
             ${background.src
-              ? `<img src="${background.src}" alt="${background.label}" />`
+              ? `<img src="${background.src}" alt="${background.label}" ${imageLoadingAttrs()} />`
               : '<span class="record-background-option__none">None</span>'}
             <span>${background.label}</span>
           </button>
@@ -503,20 +504,29 @@ function renderRecordSelect(memories, selectedIds, selectedTemplateId = DEFAULT_
     <section class="record-page record-page--select">
       <header class="record-stack-header">
         <button class="record-select-back" type="button" data-record-back-home aria-label="&#25147;&#12427;">${getIcon('returnLeft')}</button>
-        <p class="record-select-date">${formatTodayLabel()}</p>
         <div class="record-select-rule"><span></span><i>&#9825;</i><span></span></div>
-        <p class="record-select-lead">&#20889;&#30495;&#12434;3&#26522;&#36984;&#25246;</p>
+        <p class="record-select-lead">&#32032;&#26448;&#12434;&#36984;&#12406;</p>
       </header>
 
       <div class="record-select-list">
+        <article class="record-select-card record-select-card--upload">
+          <label class="record-select-upload" for="recordSelectUploadInput">
+            <input id="recordSelectUploadInput" type="file" accept="image/*" data-record-select-upload hidden />
+            <span class="record-select-upload__plus">+</span>
+            <span class="record-select-upload__label">&#20889;&#30495;&#12434;&#36861;&#21152;</span>
+          </label>
+        </article>
         ${orderedMemories.map((memory) => {
           const isSelected = selected.has(memory.id);
           const selectedIndex = orderedSelectedIds.indexOf(memory.id);
           const frameLabel = memory.frame === 'portrait' ? '&#32294;&#30011;&#20687;' : '&#27178;&#30011;&#20687;';
           return `
             <article class="record-select-card ${isSelected ? 'is-selected' : ''}">
+              <button class="record-select-card__edit" type="button" data-record-edit-memory="${memory.id}" aria-label="&#22580;&#25152;&#12392;&#12513;&#12514;&#12434;&#32232;&#38598;">
+                ${getIcon('pencil')}
+              </button>
               <button class="record-select-card__toggle" type="button" data-record-toggle-memory="${memory.id}" aria-pressed="${isSelected}">
-                ${memory.imageData ? `<img class="record-select-card__image" src="${memory.imageData}" alt="" />` : '<span class="record-select-card__image-placeholder">photo</span>'}
+                ${memory.imageData ? `<img class="record-select-card__image" src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />` : '<span class="record-select-card__image-placeholder">photo</span>'}
                 <span class="record-select-card__check" aria-hidden="true">${isSelected ? getIcon('check') : ''}</span>
               </button>
               <div class="record-select-card__copy">
@@ -541,10 +551,22 @@ function renderRecordSelect(memories, selectedIds, selectedTemplateId = DEFAULT_
 
       <div class="record-create-bar">
         <p>&#36984;&#25246;&#20013; <strong>${selected.size}</strong> / 3 &#26522;</p>
-        <button class="record-primary-button" type="button" data-record-create-page ${selected.size === 3 ? '' : 'disabled'}>&#12506;&#12540;&#12472;&#12434;&#33258;&#21205;&#20316;&#25104;</button>
+        <button class="record-primary-button" type="button" data-record-create-page>&#12506;&#12540;&#12472;&#12434;&#33258;&#21205;&#20316;&#25104;</button>
       </div>
     </section>
   `;
+}
+
+function getRecordExpandedImageSlot(slot, index = 0) {
+  const extra = 1.4;
+  if (index >= 2) {
+    return { ...slot, height: Math.min(100 - slot.y, slot.height + extra) };
+  }
+  return {
+    ...slot,
+    y: Math.max(0, slot.y - extra),
+    height: slot.height + Math.min(extra, slot.y),
+  };
 }
 
 function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '', recordDate = '', backgroundId = DEFAULT_RECORD_BACKGROUND, photoFeather = true) {
@@ -561,12 +583,20 @@ function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLA
     return '';
   };
   const renderImageSlot = (memory, slot, index) => {
-    if (!memory) return `<div class="record-template-slot record-template-slot--image is-empty" style="${rectStyle(slot)}">Photo ${index + 1}</div>`;
+    const inputId = `record-template-upload-${index}`;
+    if (!memory) {
+      return `
+        <label class="record-template-slot record-template-slot--image is-empty" style="${rectStyle(slot)}" for="${inputId}">
+          <input id="${inputId}" type="file" accept="image/*" data-record-slot-upload="${index}" hidden />
+          <span>Photo ${index + 1}</span>
+        </label>
+      `;
+    }
     return `
-      <figure class="record-template-slot record-template-slot--image" style="${rectStyle(slot)}">
-        <figcaption><span></span><time>${escapeHtml(memory.time)}</time><span></span></figcaption>
-        <img src="${memory.imageData}" alt="" />
-      </figure>
+      <label class="record-template-slot record-template-slot--image" style="${rectStyle(slot)}" for="${inputId}">
+        <input id="${inputId}" type="file" accept="image/*" data-record-slot-upload="${index}" hidden />
+        <img src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />
+      </label>
     `;
   };
   const renderTextSlot = (memory, slot, index) => {
@@ -581,8 +611,8 @@ function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLA
 
   return `
     <div class="record-generated-page record-generated-page--template ${photoFeather ? 'record-generated-page--photo-soft' : 'record-generated-page--photo-plain'}" data-record-template="${template.id}">
-      ${background.src ? `<img class="record-generated-page__background" src="${background.src}" alt="" />` : ''}
-      <img class="record-generated-page__template" src="${template.src}" alt="" />
+      ${background.src ? `<img class="record-generated-page__background" src="${background.src}" alt="" ${imageLoadingAttrs()} />` : ''}
+      <img class="record-generated-page__template" src="${template.src}" alt="" ${imageLoadingAttrs()} />
       <time class="record-generated-page__date" datetime="${escapeHtml(recordDate || getTodayDateKey())}">${escapeHtml(pageDate)}</time>
       ${template.titleSlot ? `
         <input
@@ -594,7 +624,7 @@ function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLA
           aria-label="ページタイトル"
         />
       ` : ''}
-      ${template.imageSlots.map((slot, index) => renderImageSlot(memories[index], slot, index)).join('')}
+      ${template.imageSlots.map((slot, index) => renderImageSlot(memories[index], getRecordExpandedImageSlot(slot, index), index)).join('')}
       ${template.textSlots.map((slot, index) => renderTextSlot(memories[index], slot, index)).join('')}
     </div>
   `;

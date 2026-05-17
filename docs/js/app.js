@@ -8812,12 +8812,79 @@ function getRecordSelectedMemoriesForExport() {
     .slice(0, 3);
 }
 
+async function createRecordMemoryFromFile(file, slotIndex = 0, details = {}) {
+  if (!file) return null;
+  const imageData = await fileToWebpDataUrl(file, { maxWidth: 1600, quality: 0.88 });
+  if (!imageData) return null;
+  const image = await loadCanvasImage(imageData);
+  const frame = image && image.naturalHeight > image.naturalWidth ? 'portrait' : 'landscape';
+  const recordDate = uiState.recordDate || getTodayDateKey();
+  const time = new Date().toTimeString().slice(0, 5);
+  return addRecordMemory({
+    id: `record_slot_${Date.now()}_${slotIndex}`,
+    imageData,
+    sourceType: 'album',
+    frame,
+    time,
+    createdAt: `${recordDate}T${time}:00`,
+    place: String(details.place || '').trim(),
+    memo: String(details.memo || '').trim(),
+    price: '',
+    timeOfDay: '',
+    atmosphere: '',
+    weather: '',
+    mood: '',
+    tags: [],
+    storageScope: resolveStorageScope(uiState.recordSaveScope),
+    saveScope: resolveStorageScope(uiState.recordSaveScope) === 'personal' ? 'personal' : 'couple',
+  });
+}
+
+async function applyRecordTemplateSlotFile(file, slotIndex = 0) {
+  const index = Math.min(2, Math.max(0, Number(slotIndex) || 0));
+  const memory = await createRecordMemoryFromFile(file, index);
+  if (!memory) return false;
+  const selectedIds = (uiState.recordSelectedIds || []).filter(Boolean).slice(0, 3);
+  selectedIds[index] = memory.id;
+  uiState.recordSelectedIds = selectedIds.filter(Boolean).slice(0, 3);
+  backupRecordMemory(memory).catch((error) => {
+    console.warn('Failed to back up uploaded record slot image.', error);
+  });
+  renderScreen();
+  return true;
+}
+
+async function applyRecordSelectUploadFile(file) {
+  const memory = await createRecordMemoryFromFile(file, (uiState.recordSelectedIds || []).length);
+  if (!memory) return false;
+  const selectedIds = (uiState.recordSelectedIds || []).filter(Boolean).slice(0, 3);
+  if (selectedIds.length < 3) selectedIds.push(memory.id);
+  uiState.recordSelectedIds = selectedIds;
+  backupRecordMemory(memory).catch((error) => {
+    console.warn('Failed to back up uploaded record material.', error);
+  });
+  renderScreen();
+  return true;
+}
+
 function recordSlotToCanvasRect(slot, width, height) {
   return {
     x: (slot.x / 100) * width,
     y: (slot.y / 100) * height,
     width: (slot.width / 100) * width,
     height: (slot.height / 100) * height,
+  };
+}
+
+function getRecordExpandedImageSlot(slot, index = 0) {
+  const extra = 1.4;
+  if (index >= 2) {
+    return { ...slot, height: Math.min(100 - slot.y, slot.height + extra) };
+  }
+  return {
+    ...slot,
+    y: Math.max(0, slot.y - extra),
+    height: slot.height + Math.min(extra, slot.y),
   };
 }
 
@@ -9067,7 +9134,6 @@ async function renderRecordPageToCanvasDataUrl() {
   const width = 1414;
   const height = 2000;
   const memories = getRecordSelectedMemoriesForExport();
-  if (memories.length !== 3) return '';
   const template = getRecordTemplateById(uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE);
   const background = getRecordBackgroundById(uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND);
   const title = String(uiState.recordTitle || '').trim() || 'A day to remember';
@@ -9102,15 +9168,14 @@ async function renderRecordPageToCanvasDataUrl() {
     ctx.restore();
   }
 
-  const images = await Promise.all(memories.map((memory) => loadCanvasImage(memory.imageData)));
+  const images = await Promise.all(template.imageSlots.map((slot, index) => loadCanvasImage(memories[index]?.imageData || '')));
   template.imageSlots.forEach((slot, index) => {
-    const rect = recordSlotToCanvasRect(slot, width, height);
+    const rect = recordSlotToCanvasRect(getRecordExpandedImageSlot(slot, index), width, height);
     if (!images[index]) {
-      ctx.fillStyle = '#ffe4e4';
+      ctx.fillStyle = '#f7eee9';
       ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
       return;
     }
-    drawRecordTime(ctx, memories[index]?.time, rect);
     drawCroppedCoverImage(ctx, images[index], rect, getRecordPageCrop(memories[index]), {
       featherEdges: uiState.recordPhotoFeather !== false,
     });
@@ -9343,14 +9408,13 @@ async function saveRecordGeneratedPage({
   deferRender = false,
 } = {}) {
   const selectedIds = uiState.recordSelectedIds || [];
-  if (selectedIds.length !== 3) return false;
   const imageData = imageDataOverride || await captureRecordPageImage();
   if (!imageData) return false;
   const profileName = String(getState().profile?.name || 'you').trim() || 'you';
   const title = String(uiState.recordTitle || '').trim() || 'A day to remember';
   const recordDate = uiState.recordDate || getTodayDateKey();
   const recordCreatedAt = `${recordDate}T12:00:00`;
-  const recordMemoryIds = selectedIds.slice(0, 3);
+  const recordMemoryIds = selectedIds.filter(Boolean).slice(0, 3);
   const recordPhotoTags = getRecordPagePhotoTags(recordMemoryIds);
   const composeData = {
     source: 'record',
@@ -9367,7 +9431,7 @@ async function saveRecordGeneratedPage({
 
   if (localOnly) {
     upsertPostCache({
-      id: `record_local_${recordCreatedAt.slice(0, 10)}_${selectedIds.slice(0, 3).join('_')}`,
+      id: `record_local_${recordCreatedAt.slice(0, 10)}_${recordMemoryIds.join('_') || Date.now()}`,
       authorName: profileName,
       authorIcon: profileName.slice(0, 1).toUpperCase(),
       authorAvatarData: getState().profile?.avatarData || '',
@@ -9475,8 +9539,6 @@ function wait(ms) {
 
 async function postRecordGeneratedPageWithOverlay() {
   if (uiState.recordPostingOverlay) return false;
-  const selectedIds = uiState.recordSelectedIds || [];
-  if (selectedIds.length !== 3) return false;
   const imageData = await captureRecordPageImage();
   if (!imageData) return false;
 
@@ -9722,6 +9784,7 @@ function bindRecordEvents() {
 
   document.querySelectorAll('[data-record-edit-memory]').forEach((button) => {
     button.addEventListener('click', () => {
+      uiState.recordEditReturnStage = uiState.recordStage || 'home';
       uiState.recordEditingId = button.dataset.recordEditMemory || null;
       uiState.recordStage = 'edit';
       renderScreen();
@@ -9751,8 +9814,10 @@ function bindRecordEvents() {
     } catch (error) {
       console.warn('Failed to update photo asset metadata. Keeping local update.', error);
     }
+    const returnStage = uiState.recordEditReturnStage || 'home';
     uiState.recordEditingId = null;
-    uiState.recordStage = 'home';
+    uiState.recordEditReturnStage = null;
+    uiState.recordStage = returnStage;
     renderScreen();
   });
 
@@ -9827,10 +9892,23 @@ function bindRecordEvents() {
   const recordCreatePageButton = document.querySelector('[data-record-create-page]');
   if (recordCreatePageButton) recordCreatePageButton.textContent = 'プレビュー表示';
   recordCreatePageButton?.addEventListener('click', () => {
-    if ((uiState.recordSelectedIds || []).length !== 3) return;
     uiState.recordTitle = document.querySelector('[data-record-title]')?.value || uiState.recordTitle || '';
     uiState.recordStage = 'preview';
     renderScreen();
+  });
+
+  document.querySelectorAll('[data-record-slot-upload]').forEach((input) => {
+    input.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0] || null;
+      await applyRecordTemplateSlotFile(file, event.target.dataset.recordSlotUpload);
+      event.target.value = '';
+    });
+  });
+
+  document.querySelector('[data-record-select-upload]')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0] || null;
+    await applyRecordSelectUploadFile(file);
+    event.target.value = '';
   });
 
   document.querySelector('[data-record-confirm-page]')?.addEventListener('click', () => {

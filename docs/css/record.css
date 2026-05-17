@@ -1453,6 +1453,27 @@
   cursor: pointer;
 }
 
+.record-select-card__edit {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(78, 57, 51, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 250, 247, 0.92);
+  box-shadow: 0 8px 16px rgba(77, 48, 39, 0.12);
+  color: #7b514b;
+}
+
+.record-select-card__edit svg {
+  width: 18px;
+  height: 18px;
+}
+
 .record-select-card .record-select-card__image {
   display: block;
   width: 100%;
@@ -1460,6 +1481,37 @@
   height: auto;
   border-radius: 0;
   object-fit: cover;
+}
+
+.record-select-upload {
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  align-content: center;
+  border: 1px dashed rgba(78, 57, 51, 0.22);
+  background: #fbf6f1;
+  box-shadow: 0 12px 24px rgba(77, 48, 39, 0.08);
+  color: #8d615a;
+  cursor: pointer;
+}
+
+.record-select-upload__plus {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(182, 106, 98, 0.28);
+  background: #fffaf7;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.record-select-upload__label {
+  color: #5a4b45;
+  font-size: 0.86rem;
 }
 
 .record-select-card__order {
@@ -1997,7 +2049,18 @@
 .record-template-slot--image {
   margin: 0;
   background: transparent;
+  cursor: pointer;
   overflow: visible;
+}
+
+.record-template-slot--image.is-empty {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(48, 38, 35, 0.24);
+  color: rgba(48, 38, 35, 0.5);
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: clamp(0.68rem, 3.2cqw, 0.95rem);
+  letter-spacing: 0.04em;
 }
 
 .record-template-slot--image img {
