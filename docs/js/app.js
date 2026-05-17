@@ -68,6 +68,7 @@ import {
   setPreferredMemorySpaceId,
 } from './services/completedPages.js';
 import { deletePhotoAsset, listPhotoAssets, movePhotoAssetStorageScope, savePhotoAsset, updatePhotoAssetMeta } from './services/photoAssets.js';
+import { imageLoadingAttrs } from './services/imageDelivery.js';
 import {
   deleteCoupleCalendarEntryFromDatabase,
   deleteCoupleTodoFromDatabase,
@@ -89,7 +90,7 @@ import { backupRecordMemory, restoreRecordMemoryImages } from './utils/recordMem
 
 const uiState = {
   screen: 'opening',
-  authStatus: isSupabaseConfigured ? 'loading' : 'unconfigured',
+  authStatus: 'authenticated',
   authMode: 'login',
   authUser: null,
   authMessage: '',
@@ -626,8 +627,8 @@ function renderAuthScreen() {
 
         ${isUnconfigured ? `
           <div class="auth-note auth-note--error">
-            <strong>Supabase is not configured</strong>
-            <span>Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.</span>
+            <strong>Database is disabled</strong>
+            <span>This copy uses local storage only.</span>
           </div>
         ` : ''}
 
@@ -838,7 +839,7 @@ function renderPhotoDetail(state, ui = uiState) {
                   </div>
                 ` : ''}
               </div>
-              <img class="post-detail-card__image post-detail-card__image--photo" src="${photo.imageData}" alt="" />
+              <img class="post-detail-card__image post-detail-card__image--photo" src="${photo.imageData}" alt="" ${imageLoadingAttrs()} />
               <div class="post-detail-card__content">
                 <p class="post-detail-card__time">${dateText}</p>
                 ${isEditing ? `
@@ -1339,7 +1340,7 @@ function renderPhotoPreviewOverlay() {
           </button>
         </div>
         <div class="opening-memory-overlay__page">
-          <img src="${photo.imageData}" alt="" />
+          <img src="${photo.imageData}" alt="" ${imageLoadingAttrs()} />
         </div>
       </div>
     </div>
@@ -1361,7 +1362,7 @@ function renderOpeningMemoryOverlay() {
           </button>
         </div>
         <div class="opening-memory-overlay__page">
-          <img src="${post.imageData}" alt="${title}" />
+          <img src="${post.imageData}" alt="${title}" ${imageLoadingAttrs()} />
         </div>
       </div>
     </div>
@@ -1379,8 +1380,8 @@ function renderRecordPostingOverlay() {
         <p class="record-posting-overlay__kicker">${isComplete ? 'done' : 'posting'}</p>
         <h2>${isComplete ? 'ページ完成！' : '投稿中...'}</h2>
         <div class="record-posting-overlay__page" style="--record-post-progress:${progress}%">
-          <img class="record-posting-overlay__page-mono" src="${overlay.imageData}" alt="" />
-          <img class="record-posting-overlay__page-color" src="${overlay.imageData}" alt="" />
+          <img class="record-posting-overlay__page-mono" src="${overlay.imageData}" alt="" ${imageLoadingAttrs()} />
+          <img class="record-posting-overlay__page-color" src="${overlay.imageData}" alt="" ${imageLoadingAttrs()} />
         </div>
         <div class="record-posting-overlay__bar" aria-hidden="true">
           <span style="width:${progress}%"></span>
@@ -6577,7 +6578,7 @@ function bindComposeEvents() {
       const imagePosition = state.position || { x: 0.5, y: 0.5, zoom: 1 };
       const selectedClass = `${customLayoutState.selectedId === box.id ? ' is-selected' : ''}${hasImage ? '' : ' is-empty'}`;
       const surfaceMarkup = hasImage
-        ? `<img class="compose-custom-item__image" src="${state.previewUrl}" alt="" draggable="false" style="object-position:${(imagePosition.x || 0.5) * 100}% ${(imagePosition.y || 0.5) * 100}%;transform:scale(${Math.max(1, imagePosition.zoom || 1)});" />`
+        ? `<img class="compose-custom-item__image" src="${state.previewUrl}" alt="" draggable="false" ${imageLoadingAttrs()} style="object-position:${(imagePosition.x || 0.5) * 100}% ${(imagePosition.y || 0.5) * 100}%;transform:scale(${Math.max(1, imagePosition.zoom || 1)});" />`
         : `<div class="compose-custom-item__placeholder"><span class="compose-custom-item__plus">${getIcon('compose')}</span></div>`;
       return `
         <div
@@ -10846,7 +10847,16 @@ function applyInviteRouteFromUrl() {
 
 async function initializeAuth() {
   if (!isSupabaseConfigured) {
-    uiState.authStatus = 'unconfigured';
+    applyAuthSession({
+      user: {
+        id: 'local',
+        email: '',
+        user_metadata: {
+          name: getState().profile?.name || 'you',
+        },
+      },
+    });
+    applyInviteRouteFromUrl();
     render();
     return;
   }

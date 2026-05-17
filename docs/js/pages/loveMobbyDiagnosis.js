@@ -515,18 +515,14 @@ function getResultDetails(result) {
 export function getResultImageSrc(resultType) {
   const imageName = resultType?.typeName ? `${resultType.typeName}.webp` : '';
   if (!imageName) return '';
-  const pathBase = window.location.pathname.includes('/burn_two')
-    ? '/burn_two/'
-    : '/';
+  const pathBase = import.meta.env.BASE_URL || '/';
   return `${pathBase}image/lovemobby/${encodeURIComponent(imageName)}`;
 }
 
 export function getShareCardImageSrc(resultType) {
   const imageName = resultType?.typeName ? `${resultType.typeName}_sharecard.webp` : '';
   if (!imageName) return '';
-  const pathBase = window.location.pathname.includes('/burn_two')
-    ? '/burn_two/'
-    : '/';
+  const pathBase = import.meta.env.BASE_URL || '/';
   return `${pathBase}image/lovemobby_sharecard/${encodeURIComponent(imageName)}`;
 }
 
@@ -573,7 +569,7 @@ function renderCharacterList() {
       <div class="love-character-grid">
         ${Object.values(RESULT_TYPES).map((type) => `
           <button class="love-character-card" type="button" data-love-character-code="${type.code}">
-            <img src="${getResultImageSrc(type)}" alt="${type.characterName}" loading="lazy" decoding="async" />
+            <img src="${getResultImageSrc(type)}" alt="${type.characterName}" loading="lazy" decoding="async" fetchpriority="low" />
             <div class="love-character-card__copy">
               <span>${type.code}</span>
               <strong>${type.typeName}</strong>
@@ -593,7 +589,7 @@ export function renderCharacterDetail(code = 'HLTO') {
   return `
     <article class="love-character-detail" data-love-character-detail>
       <div class="love-character-detail__head">
-        <img src="${getResultImageSrc(type)}" alt="${type.characterName}" loading="lazy" decoding="async" />
+        <img src="${getResultImageSrc(type)}" alt="${type.characterName}" loading="lazy" decoding="async" fetchpriority="low" />
         <div>
           <p class="love-diagnosis__eyebrow">character ${type.code}</p>
           <h4>${type.typeName}</h4>
@@ -630,12 +626,12 @@ export function renderCompatibilityResult(firstCode = 'HLTO', secondCode = 'HLTO
       <div class="love-compatibility-result__head">
         <div class="love-compatibility-result__pair">
           <figure>
-            <img src="${getResultImageSrc(firstType)}" alt="${firstType.characterName}" loading="lazy" decoding="async" />
+            <img src="${getResultImageSrc(firstType)}" alt="${firstType.characterName}" loading="lazy" decoding="async" fetchpriority="low" />
             <figcaption><span>${firstType.code}</span>${firstType.typeName}</figcaption>
           </figure>
           <i>×</i>
           <figure>
-            <img src="${getResultImageSrc(secondType)}" alt="${secondType.characterName}" loading="lazy" decoding="async" />
+            <img src="${getResultImageSrc(secondType)}" alt="${secondType.characterName}" loading="lazy" decoding="async" fetchpriority="low" />
             <figcaption><span>${secondType.code}</span>${secondType.typeName}</figcaption>
           </figure>
         </div>
@@ -802,7 +798,7 @@ function renderResult(diagnosisState) {
       <article class="love-result-hero">
         <div class="love-result-hero__media">
           <div class="love-result-hero__image">
-            ${resultImageSrc ? `<img src="${resultImageSrc}" alt="${resultType.characterName}" loading="lazy" decoding="async" />` : ''}
+            ${resultImageSrc ? `<img src="${resultImageSrc}" alt="${resultType.characterName}" loading="lazy" decoding="async" fetchpriority="low" />` : ''}
           </div>
           ${shareCardImageSrc ? `
             <button class="button button--ghost love-share-card-toggle" type="button" data-love-share-card-toggle>
@@ -821,7 +817,7 @@ function renderResult(diagnosisState) {
           <button class="love-share-card-modal__backdrop" type="button" data-love-share-card-close aria-label="close"></button>
           <section class="love-share-card-dialog" role="dialog" aria-modal="true" aria-label="share card">
             <button class="love-share-card-dialog__close" type="button" data-love-share-card-close aria-label="close">x</button>
-            <img src="${shareCardImageSrc}" alt="${resultType.typeName} share card" loading="lazy" decoding="async" data-love-share-card-image />
+            <img src="${shareCardImageSrc}" alt="${resultType.typeName} share card" loading="lazy" decoding="async" fetchpriority="low" data-love-share-card-image />
           <button class="button button--primary button--full" type="button" data-love-share-card-save data-share-card-src="${shareCardImageSrc}" data-share-card-name="${resultType.typeName}">
             保存する
           </button>

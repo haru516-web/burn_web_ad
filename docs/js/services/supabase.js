@@ -1,25 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+export const isSupabaseConfigured = false;
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
-
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabasePublishableKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null;
+export const supabase = null;
 
 export function requireSupabase() {
-  if (!supabase) {
-    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
-  }
-  return supabase;
+  throw new Error('Database integration is disabled in this copy. Local storage is used instead.');
 }
 
 export function getAuthRedirectUrl(path = '/') {
@@ -115,11 +99,15 @@ export async function getPartnerProfile() {
 }
 
 export async function getCurrentSession() {
-  const client = requireSupabase();
-  return client.auth.getSession();
+  return { data: { session: null }, error: null };
 }
 
 export function onAuthStateChange(callback) {
-  const client = requireSupabase();
-  return client.auth.onAuthStateChange(callback);
+  return {
+    data: {
+      subscription: {
+        unsubscribe() {},
+      },
+    },
+  };
 }
