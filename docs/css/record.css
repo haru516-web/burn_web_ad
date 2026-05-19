@@ -57,6 +57,20 @@
   letter-spacing: 0;
 }
 
+.record-page--home .record-header__title {
+  font-size: 0;
+}
+
+.record-page--home .record-header__title::before {
+  content: 'ページ作成';
+  font-size: 1.35rem;
+}
+
+.record-page--home .record-header__title-row [data-compose-from-record] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .record-header__title-row {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 36px;
@@ -1196,6 +1210,12 @@
   height: 20px;
 }
 
+.record-page--edit-memory .record-choice-fields,
+.record-page--edit-memory .record-choice-field,
+.record-page--edit-memory .record-tag-fields--extra {
+  display: none;
+}
+
 .record-edit-card .record-primary-button {
   width: 100%;
 }
@@ -1391,6 +1411,7 @@
 }
 
 .record-select-rule {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -1451,6 +1472,33 @@
   box-shadow: 0 12px 24px rgba(77, 48, 39, 0.1);
   color: inherit;
   cursor: pointer;
+}
+
+.record-select-rule .record-select-compose {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(83, 70, 61, 0.11);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(83, 70, 61, 0.74);
+  box-shadow: 0 8px 18px rgba(77, 48, 39, 0.08);
+}
+
+.record-select-rule .record-select-compose svg,
+.record-select-rule .record-select-compose img {
+  width: 18px;
+  height: 18px;
+}
+
+.record-select-rule .record-select-compose:focus-visible {
+  outline: 2px solid rgba(181, 145, 89, 0.62);
+  outline-offset: 3px;
 }
 
 .record-select-card__edit {
@@ -2215,9 +2263,16 @@
 
 .record-complete-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   margin-top: 28px;
+}
+
+.record-page--complete .couple-album-tabs,
+.record-page--complete [data-record-post-page],
+.record-page--complete [data-record-stage="select"],
+.record-page--complete .record-complete-actions button:not([data-record-save-page]) {
+  display: none;
 }
 
 .record-complete-actions button {

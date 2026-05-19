@@ -657,6 +657,7 @@ function renderEditorScreen({ values, selectedId, selectedBackground, isEditing 
           ${renderComposeEditHeaderActions(isEditing)}
           ${isCustomTemplate ? renderComposeAddPopoverButton() : ''}
           ${isCustomTemplate ? renderComposeDeleteButton() : ''}
+          ${renderComposeCloseButton('data-close-compose')}
         </div>
       </header>
 

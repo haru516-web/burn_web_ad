@@ -3287,6 +3287,312 @@
   padding: 0;
 }
 
+.burn-main-menu {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom));
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.2)),
+    linear-gradient(180deg, #faf6ef 0%, #f4eee6 100%);
+  color: #211915;
+}
+
+.burn-main-menu__shell {
+  width: min(100%, 980px);
+  display: grid;
+  gap: clamp(26px, 4vw, 38px);
+  justify-items: center;
+}
+
+.burn-main-menu__header {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.burn-main-menu__brand {
+  margin: 0;
+  color: #a68152;
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+}
+
+.burn-main-menu__header h1 {
+  margin: 0;
+  font-family: 'Zen Old Mincho', 'Noto Serif JP', serif;
+  font-size: clamp(28px, 4.4vw, 42px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+}
+
+.burn-main-menu__header span {
+  width: 72px;
+  height: 1px;
+  background: #b99563;
+}
+
+.burn-main-menu__header p:last-child {
+  margin: 0;
+  color: #584941;
+  font-family: 'Zen Old Mincho', 'Noto Serif JP', serif;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.burn-main-menu__grid {
+  width: min(100%, 720px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 34px);
+}
+
+.burn-main-card {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: clamp(18px, 3vw, 28px) clamp(16px, 3vw, 24px) clamp(24px, 3vw, 30px);
+  border: 1px solid rgba(165, 139, 112, 0.28);
+  border-radius: 22px;
+  background: rgba(255, 252, 248, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 18px 42px rgba(92, 70, 54, 0.13);
+  color: #211915;
+  text-align: center;
+}
+
+.burn-main-card:focus-visible {
+  outline: 2px solid rgba(181, 145, 89, 0.62);
+  outline-offset: 4px;
+}
+
+.burn-main-card__visual {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1.38 / 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.burn-main-card__visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  filter: saturate(0.88) brightness(1.04);
+}
+
+.burn-main-card__visual--diagnosis {
+  position: relative;
+  background:
+    radial-gradient(circle at 48% 45%, rgba(238, 181, 169, 0.26), transparent 34%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.2), rgba(255, 252, 247, 0.2));
+  overflow: visible;
+}
+
+.burn-main-card__heart {
+  position: relative;
+  width: 112px;
+  height: 102px;
+  transform: rotate(-45deg);
+  border-radius: 22px 0 22px 22px;
+  background: linear-gradient(135deg, rgba(236, 149, 138, 0.66), rgba(245, 204, 190, 0.76));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
+}
+
+.burn-main-card__heart::before,
+.burn-main-card__heart::after {
+  content: '';
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.burn-main-card__heart::before {
+  top: -56px;
+  left: 0;
+}
+
+.burn-main-card__heart::after {
+  top: 0;
+  left: 56px;
+}
+
+.burn-main-card__checklist {
+  position: absolute;
+  right: 12%;
+  bottom: 9%;
+  width: 54px;
+  height: 70px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 14px 10px 10px;
+  border: 1px solid rgba(126, 94, 64, 0.32);
+  border-radius: 3px;
+  background: #fffaf3;
+  box-shadow: 0 8px 18px rgba(92, 70, 54, 0.12);
+}
+
+.burn-main-card__checklist::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 24px;
+  height: 14px;
+  transform: translateX(-50%);
+  border-radius: 8px 8px 3px 3px;
+  background: #c4a47a;
+}
+
+.burn-main-card__checklist i {
+  display: block;
+  height: 1px;
+  border-left: 8px solid #b99065;
+  background: #d8c5ad;
+}
+
+.burn-main-card__icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #c9a675, #b99662);
+  color: #fffaf3;
+  box-shadow: 0 10px 22px rgba(132, 93, 52, 0.18);
+}
+
+.burn-main-card__icon svg {
+  width: 31px;
+  height: 31px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.burn-main-card__title {
+  font-family: 'Zen Old Mincho', 'Noto Serif JP', serif;
+  font-size: clamp(24px, 3.2vw, 32px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.05em;
+}
+
+.burn-main-card__text {
+  color: #4f433b;
+  font-family: 'Zen Old Mincho', 'Noto Serif JP', serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+@media (max-width: 620px) {
+  .burn-main-menu {
+    align-items: stretch;
+    padding: max(26px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .burn-main-menu__shell {
+    position: relative;
+    min-height: calc(100dvh - max(26px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom)));
+    grid-template-rows: auto;
+    gap: 24px;
+  }
+
+  .burn-main-menu__header {
+    align-self: start;
+  }
+
+  .burn-main-menu__grid {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    transform: translate(-50%, -50%);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .burn-main-card {
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-areas:
+      "visual icon"
+      "visual title"
+      "visual text";
+    justify-items: start;
+    align-items: center;
+    gap: 6px 16px;
+    min-height: 168px;
+    padding: 18px;
+    text-align: left;
+  }
+
+  .burn-main-card__visual {
+    grid-area: visual;
+    width: 112px;
+    min-height: 112px;
+  }
+
+  .burn-main-card__heart {
+    width: 64px;
+    height: 58px;
+    border-radius: 14px 0 14px 14px;
+  }
+
+  .burn-main-card__heart::before,
+  .burn-main-card__heart::after {
+    width: 64px;
+    height: 64px;
+  }
+
+  .burn-main-card__heart::before {
+    top: -32px;
+  }
+
+  .burn-main-card__heart::after {
+    left: 32px;
+  }
+
+  .burn-main-card__checklist {
+    right: 0;
+    bottom: 0;
+    width: 38px;
+    height: 50px;
+    gap: 5px;
+    padding: 11px 7px 7px;
+  }
+
+  .burn-main-card__icon {
+    grid-area: icon;
+    width: 48px;
+    height: 48px;
+    margin: 0;
+  }
+
+  .burn-main-card__icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .burn-main-card__title {
+    grid-area: title;
+  }
+
+  .burn-main-card__text {
+    grid-area: text;
+  }
+}
+
 @media (max-width: 420px) {
   .couple-screen {
     padding-left: 14px;

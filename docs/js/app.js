@@ -536,6 +536,7 @@ let app = null;
 let openingSequenceId = 0;
 let homeCoreTransitionTimer = null;
 let activeComposeBridge = null;
+const PUBLIC_SITE_SCREENS = new Set(['home', 'record', 'compose', 'magazine']);
 const profileAvatarDraft = {
   file: null,
   previewUrl: '',
@@ -684,6 +685,9 @@ function renderAuthScreen() {
 
 function getPageHtml() {
   const state = getState();
+  if (!PUBLIC_SITE_SCREENS.has(uiState.screen)) {
+    uiState.screen = 'home';
+  }
   if (!uiState.partnerProfile?.hasPartner) {
     uiState.albumPageScope = 'personal';
     uiState.albumPhotoScope = 'personal';
@@ -1220,7 +1224,7 @@ function renderShell() {
   const themeName = resolveHomeTheme();
   const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera';
   const isLiveRecordCameraStage = isRecordCameraStage && !uiState.recordDraft?.imageData;
-  const bottomNavScreens = ['home', 'timeline', 'search', 'record', 'magazine', 'profile', 'compose', 'post', 'photo'];
+  const bottomNavScreens = [];
   const hasBottomNav = bottomNavScreens.includes(uiState.screen) && !isRecordCameraStage;
 
   shellClasses.push(`app-shell--theme-${themeName}`);
@@ -1401,7 +1405,7 @@ function renderScreen() {
   }
   const isRecordCameraStage = uiState.screen === 'record' && uiState.recordStage === 'camera';
   const isLiveRecordCameraStage = isRecordCameraStage && !uiState.recordDraft?.imageData;
-  const bottomNavScreens = ['home', 'timeline', 'search', 'record', 'magazine', 'profile', 'compose', 'post', 'photo'];
+  const bottomNavScreens = [];
   const hasBottomNav = bottomNavScreens.includes(uiState.screen) && !isRecordCameraStage;
   const shell = screenArea.closest('.app-shell');
   shell?.classList.toggle('app-shell--record-camera', isLiveRecordCameraStage);
@@ -1452,6 +1456,14 @@ function captureViewState() {
     profileAuthor: uiState.profileAuthor,
     postReturnScreen: uiState.postReturnScreen,
     postReturnProfileAuthor: uiState.postReturnProfileAuthor,
+    recordStage: uiState.recordStage,
+    recordDate: uiState.recordDate,
+    recordTemplateId: uiState.recordTemplateId,
+    recordBackgroundId: uiState.recordBackgroundId,
+    recordPhotoFeather: uiState.recordPhotoFeather,
+    recordTitle: uiState.recordTitle,
+    recordSelectedIds: Array.isArray(uiState.recordSelectedIds) ? [...uiState.recordSelectedIds] : [],
+    recordEditingId: uiState.recordEditingId,
   };
 }
 
@@ -1467,10 +1479,23 @@ function restoreViewState(snapshot, fallback = 'home') {
   uiState.profileAuthor = uiState.screen === 'profile' ? (snapshot.profileAuthor || null) : null;
   uiState.postReturnScreen = snapshot.postReturnScreen || 'home';
   uiState.postReturnProfileAuthor = snapshot.postReturnProfileAuthor || null;
+  if (uiState.screen === 'record') {
+    uiState.recordStage = snapshot.recordStage || 'select';
+    uiState.recordDate = snapshot.recordDate || null;
+    uiState.recordTemplateId = snapshot.recordTemplateId || DEFAULT_RECORD_TEMPLATE;
+    uiState.recordBackgroundId = snapshot.recordBackgroundId || DEFAULT_RECORD_BACKGROUND;
+    uiState.recordPhotoFeather = snapshot.recordPhotoFeather !== false;
+    uiState.recordTitle = snapshot.recordTitle || '';
+    uiState.recordSelectedIds = Array.isArray(snapshot.recordSelectedIds) ? [...snapshot.recordSelectedIds] : [];
+    uiState.recordEditingId = snapshot.recordEditingId || null;
+  }
   render();
 }
 
 function navigate(screen) {
+  if (!PUBLIC_SITE_SCREENS.has(screen)) {
+    screen = 'home';
+  }
   if (screen !== 'home') {
     resetHomeCoreState();
   }
@@ -1530,7 +1555,7 @@ function navigate(screen) {
     });
   }
   if (screen === 'record') {
-    uiState.recordStage = 'home';
+    uiState.recordStage = 'select';
     uiState.recordDate = null;
     uiState.recordTemplateId = DEFAULT_RECORD_TEMPLATE;
     uiState.recordBackgroundId = DEFAULT_RECORD_BACKGROUND;
@@ -1560,10 +1585,9 @@ function navigate(screen) {
 }
 
 function enterTimelineFromOpening() {
-  const openingMemoryPost = getRandomOpeningMemoryPost();
   uiState.previewPostId = null;
   uiState.previewPhotoId = null;
-  uiState.openingMemoryPostId = openingMemoryPost?.id || null;
+  uiState.openingMemoryPostId = null;
   uiState.commentPostId = null;
   uiState.openingTapGuardUntil = Date.now() + 700;
   uiState.postReturnScreen = 'home';
@@ -8312,14 +8336,60 @@ function bindMagazineEvents() {
 
   document.querySelectorAll('[data-love-character-code]').forEach((card) => {
     card.addEventListener('click', () => {
-      const detail = document.querySelector('[data-love-character-detail]');
+      const modal = document.querySelector('[data-love-character-modal]');
       const code = card.getAttribute('data-love-character-code') || 'HLTO';
-      if (!detail) return;
-      detail.outerHTML = renderCharacterDetail(code);
+      if (!modal) return;
+      modal.innerHTML = `
+        <button class="love-character-modal__backdrop" type="button" data-love-character-close aria-label="close"></button>
+        <section class="love-character-modal__dialog" role="dialog" aria-modal="true" aria-label="character detail">
+          <button class="love-character-modal__close" type="button" data-love-character-close aria-label="close">x</button>
+          ${renderCharacterDetail(code)}
+        </section>
+      `;
+      modal.hidden = false;
       document.querySelectorAll('[data-love-character-code]').forEach((nextCard) => {
         nextCard.classList.toggle('is-selected', nextCard === card);
       });
     });
+  });
+
+  document.querySelector('[data-love-character-modal]')?.addEventListener('click', (event) => {
+    const saveButton = event.target.closest('[data-love-character-share-save]');
+    if (saveButton) {
+      const imageSrc = saveButton.dataset.shareCardSrc || '';
+      const typeName = saveButton.dataset.shareCardName || 'love-mobby';
+      if (!imageSrc) return;
+      const previousText = saveButton.textContent;
+      saveButton.disabled = true;
+      saveButton.textContent = '保存中';
+      fetch(imageSrc)
+        .then((response) => {
+          if (!response.ok) throw new Error(`Failed to download share card: ${response.status}`);
+          return response.blob();
+        })
+        .then((blob) => {
+          const safeName = String(typeName || 'love-mobby')
+            .replace(/[\\/:*?"<>|]/g, '-')
+            .trim() || 'love-mobby';
+          downloadBlobFile(blob, `${safeName}_sharecard.webp`);
+          saveButton.textContent = '保存しました';
+        })
+        .catch((error) => {
+          console.warn('Failed to save Love Mobby character share card.', error);
+          saveButton.textContent = '保存できませんでした';
+        })
+        .finally(() => {
+          setTimeout(() => {
+            saveButton.disabled = false;
+            saveButton.textContent = previousText || '共有カードを保存';
+          }, 900);
+        });
+      return;
+    }
+
+    if (!event.target.closest('[data-love-character-close]')) return;
+    event.currentTarget.hidden = true;
+    event.currentTarget.innerHTML = '';
   });
 
   document.querySelector('[data-love-tab-diagnosis]')?.addEventListener('click', () => {
@@ -8860,6 +8930,9 @@ async function applyRecordSelectUploadFile(file) {
   const selectedIds = (uiState.recordSelectedIds || []).filter(Boolean).slice(0, 3);
   if (selectedIds.length < 3) selectedIds.push(memory.id);
   uiState.recordSelectedIds = selectedIds;
+  uiState.recordEditReturnStage = 'select';
+  uiState.recordEditingId = memory.id;
+  uiState.recordStage = 'edit';
   backupRecordMemory(memory).catch((error) => {
     console.warn('Failed to back up uploaded record material.', error);
   });
@@ -9580,7 +9653,8 @@ function bindRecordEvents() {
 
   document.querySelectorAll('[data-record-stage]').forEach((button) => {
     button.addEventListener('click', () => {
-      uiState.recordStage = button.dataset.recordStage || 'home';
+      const nextRecordStage = button.dataset.recordStage || 'home';
+      uiState.recordStage = nextRecordStage === 'home' ? 'select' : nextRecordStage;
       if (uiState.recordStage !== 'edit') {
         uiState.recordEditingId = null;
       }
@@ -9591,7 +9665,11 @@ function bindRecordEvents() {
   document.querySelectorAll('[data-record-back-home]').forEach((button) => {
     button.addEventListener('click', () => {
       stopRecordCameraStream();
-      uiState.recordStage = 'home';
+      if (uiState.recordStage === 'select') {
+        navigate('home');
+        return;
+      }
+      uiState.recordStage = 'select';
       uiState.recordDraft = null;
       uiState.recordEditingId = null;
       renderScreen();
@@ -9794,14 +9872,15 @@ function bindRecordEvents() {
   document.querySelector('[data-record-update-memory]')?.addEventListener('click', async () => {
     const id = uiState.recordEditingId;
     if (!id) return;
+    const currentMemory = getState().recordMemories.find((memory) => memory.id === id) || {};
     const updates = {
       place: String(document.querySelector('[data-record-edit-place]')?.value || '').trim(),
       memo: String(document.querySelector('[data-record-edit-memo]')?.value || '').trim(),
-      price: document.querySelector('[data-record-edit-price]')?.value || '',
-      timeOfDay: document.querySelector('[data-record-edit-time-of-day]')?.value || '',
-      atmosphere: document.querySelector('[data-record-edit-atmosphere]')?.value || '',
-      weather: document.querySelector('[data-record-edit-weather]')?.value || '',
-      mood: document.querySelector('[data-record-edit-mood]')?.value || '',
+      price: document.querySelector('[data-record-edit-price]')?.value || currentMemory.price || '',
+      timeOfDay: document.querySelector('[data-record-edit-time-of-day]')?.value || currentMemory.timeOfDay || currentMemory.time_of_day || '',
+      atmosphere: document.querySelector('[data-record-edit-atmosphere]')?.value || currentMemory.atmosphere || '',
+      weather: document.querySelector('[data-record-edit-weather]')?.value || currentMemory.weather || '',
+      mood: document.querySelector('[data-record-edit-mood]')?.value || currentMemory.mood || '',
     };
     if (!updates.place || !updates.memo) {
       window.alert('場所と感想を入力してください。');

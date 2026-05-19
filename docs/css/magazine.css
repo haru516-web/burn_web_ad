@@ -342,18 +342,25 @@
   gap: 10px;
 }
 
+@media (min-width: 900px) {
+  .love-character-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .love-character-card {
   width: 100%;
   display: grid;
-  grid-template-columns: 58px 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  align-items: start;
+  padding: 9px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   color: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .love-character-card.is-selected,
@@ -364,7 +371,7 @@
 }
 
 .love-character-card img {
-  width: 58px;
+  width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 12px;
   object-fit: cover;
@@ -385,7 +392,7 @@
 
 .love-character-card__copy strong {
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.35;
 }
 
 .love-character-card__copy p {
@@ -452,6 +459,137 @@
   display: grid;
   gap: 5px;
   padding-left: 1.2em;
+}
+
+.love-character-share-save {
+  margin-top: 4px;
+}
+
+.love-character-modal[hidden] {
+  display: none;
+}
+
+.love-character-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.love-character-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(45, 34, 40, 0.44);
+  backdrop-filter: blur(10px);
+}
+
+.love-character-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  max-height: min(82vh, 720px);
+  overflow: auto;
+}
+
+.love-character-modal__dialog .love-character-detail {
+  border-radius: 18px;
+}
+
+.love-character-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #5e4450;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 28px rgba(63, 32, 48, 0.18);
+}
+
+@media (min-width: 900px) {
+  .love-character-modal {
+    padding: 42px;
+  }
+
+  .love-character-modal__dialog {
+    width: min(1120px, 94vw);
+    max-height: min(84vh, 760px);
+  }
+
+  .love-character-modal__dialog .love-character-detail {
+    grid-template-columns: minmax(360px, 0.82fr) minmax(420px, 1fr);
+    gap: 28px;
+    align-items: start;
+    padding: 28px;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head {
+    display: contents;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head > div {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head img {
+    grid-column: 1;
+    grid-row: 1 / span 8;
+    width: 100%;
+    max-height: 62vh;
+    aspect-ratio: 1 / 1;
+    border-radius: 20px;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head h4 {
+    font-size: 30px;
+  }
+
+  .love-character-modal__dialog .love-character-detail section {
+    align-self: start;
+  }
+
+  .love-character-modal__dialog .love-character-share-save {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .love-character-modal {
+    padding: 14px;
+  }
+
+  .love-character-modal__dialog {
+    max-height: 86vh;
+  }
+
+  .love-character-modal__dialog .love-character-detail {
+    gap: 16px;
+    padding: 14px;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    text-align: left;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head img {
+    width: 100%;
+    max-height: 58vh;
+    aspect-ratio: 1 / 1;
+    border-radius: 16px;
+  }
+
+  .love-character-modal__dialog .love-character-detail__head h4 {
+    margin-top: 2px;
+    font-size: 23px;
+  }
 }
 
 .love-compatibility {
@@ -1089,7 +1227,6 @@
   }
 
   .love-diagnosis__nav,
-  .love-character-grid,
   .love-compatibility__form {
     grid-template-columns: 1fr;
   }

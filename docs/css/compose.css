@@ -455,8 +455,7 @@
   justify-content: flex-start;
 }
 
-.page--compose--edit--page8 .compose-stage-header__title-wrap,
-.page--compose--edit--page8 .compose-close-button {
+.page--compose--edit--page8 .compose-stage-header__title-wrap {
   display: none !important;
 }
 
@@ -4151,8 +4150,7 @@
   flex: 0 0 auto;
 }
 
-.page--compose--edit--page8 .compose-stage-header__title-wrap,
-.page--compose--edit--page8 .compose-close-button {
+.page--compose--edit--page8 .compose-stage-header__title-wrap {
   display: none !important;
 }
 

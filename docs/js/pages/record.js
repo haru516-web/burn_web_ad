@@ -220,7 +220,9 @@ function renderRecordHome(memories, recordDate = '') {
     <section class="record-page record-page--home">
       <header class="record-header">
         <div class="record-header__title-row">
-          <span aria-hidden="true"></span>
+          <button class="record-header__compose-link" type="button" data-home-nav="home" aria-label="メインメニューへ戻る">
+            ${getIcon('returnLeft')}
+          </button>
           <p class="record-header__title">記録</p>
           <button class="record-header__compose-link" type="button" data-home-nav="compose" data-compose-from-record aria-label="テンプレート・カスタム編集を開く">
             ${getIcon('edit')}
@@ -504,7 +506,14 @@ function renderRecordSelect(memories, selectedIds, selectedTemplateId = DEFAULT_
     <section class="record-page record-page--select">
       <header class="record-stack-header">
         <button class="record-select-back" type="button" data-record-back-home aria-label="&#25147;&#12427;">${getIcon('returnLeft')}</button>
-        <div class="record-select-rule"><span></span><i>&#9825;</i><span></span></div>
+        <div class="record-select-rule">
+          <span></span>
+          <i>&#9825;</i>
+          <span></span>
+          <button class="record-select-compose" type="button" data-home-nav="compose" data-compose-from-record aria-label="コンポーズ編集を開く">
+            ${getIcon('compose')}
+          </button>
+        </div>
         <p class="record-select-lead">&#32032;&#26448;&#12434;&#36984;&#12406;</p>
       </header>
 
@@ -630,8 +639,8 @@ function renderGeneratedPagePreview(memories, templateId = DEFAULT_RECORD_TEMPLA
   `;
 }
 
-function renderRecordComplete(memories, templateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '', recordDate = '', backgroundId = DEFAULT_RECORD_BACKGROUND, photoFeather = true, saveScope = 'shared') {
-  const activeScope = saveScope === 'personal' ? 'personal' : 'shared';
+function renderRecordComplete(memories, templateId = DEFAULT_RECORD_TEMPLATE, recordTitle = '', recordDate = '', backgroundId = DEFAULT_RECORD_BACKGROUND, photoFeather = true) {
+  const activeScope = 'shared';
   return `
     <section class="record-page record-page--complete">
       <header class="record-stack-header">
@@ -690,6 +699,6 @@ export function renderRecord(state, uiState) {
   const photoFeather = uiState.recordPhotoFeather !== false;
   if (stage === 'select') return renderRecordSelect(memories, uiState.recordSelectedIds || [], uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '', photoFeather);
   if (stage === 'preview') return renderRecordPreview(getSelectedMemories(memories, uiState.recordSelectedIds || []), uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '', recordDate, uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND, photoFeather);
-  if (stage === 'complete') return renderRecordComplete(getSelectedMemories(memories, uiState.recordSelectedIds || []), uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '', recordDate, uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND, photoFeather, uiState.recordSaveScope || 'shared');
+  if (stage === 'complete') return renderRecordComplete(getSelectedMemories(memories, uiState.recordSelectedIds || []), uiState.recordTemplateId || DEFAULT_RECORD_TEMPLATE, uiState.recordTitle || '', recordDate, uiState.recordBackgroundId || DEFAULT_RECORD_BACKGROUND, photoFeather);
   return renderRecordHome(memories, recordDate);
 }

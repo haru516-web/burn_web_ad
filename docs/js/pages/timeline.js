@@ -1,6 +1,7 @@
 import { getIcon } from '../components/icons.js';
 import { getPostDateKey } from '../utils/date.js';
 import { getCalendarEntriesWithSpecialDates, getEntriesForDateWithSpecialDates } from '../utils/specialDates.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 function renderBrand() {
   return `
@@ -83,7 +84,7 @@ function renderSelectedDatePages(posts = []) {
   const title = getPostTitle(post);
   return `
     <button class="couple-selected-date__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
-      ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
+      ${post.imageData ? `<img src="${post.imageData}" alt="${title}" ${imageLoadingAttrs()} />` : '<span>pages</span>'}
     </button>
   `;
 }
@@ -273,7 +274,7 @@ function renderCalendarDatePopup(state = {}, uiState = {}) {
                 const title = escapeCalendarText(getPostTitle(post));
                 return `
                   <button class="calendar-date-popover__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
-                    ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
+                    ${post.imageData ? `<img src="${post.imageData}" alt="${title}" ${imageLoadingAttrs()} />` : '<span>pages</span>'}
                   </button>
                 `;
               }).join('')}
@@ -341,14 +342,38 @@ function renderHomeQuickCards(couple = {}) {
 }
 
 export function renderHome(state, uiState = {}) {
-  const selectedDate = uiState.selectedCalendarDate || getTodayDateKey();
   return `
-    <section class="page couple-home">
-      <div class="couple-screen">
-        ${renderBrand()}
-        ${renderCalendarDynamic(state, selectedDate)}
-        ${renderHomeQuickCards(state.couple || {})}
-        ${renderCalendarDatePopup(state, uiState)}
+    <section class="page couple-home burn-main-menu">
+      <div class="burn-main-menu__shell">
+        <header class="burn-main-menu__header">
+          <p class="burn-main-menu__brand">BURN</p>
+          <h1>メインメニュー</h1>
+          <span aria-hidden="true"></span>
+          <p>使いたい機能を選んでください</p>
+        </header>
+
+        <div class="burn-main-menu__grid" aria-label="メインメニュー">
+          <button class="burn-main-card burn-main-card--compose" type="button" data-home-nav="record">
+            <span class="burn-main-card__visual" aria-hidden="true">
+              <img src="image/magazine_cover/page.jpg" alt="" ${imageLoadingAttrs()} />
+            </span>
+            <span class="burn-main-card__icon">${getIcon('bookOpen')}</span>
+            <span class="burn-main-card__title">ページ作成</span>
+            <span class="burn-main-card__text">写真をまとめて一枚の記録に</span>
+          </button>
+
+          <button class="burn-main-card burn-main-card--diagnosis" type="button" data-home-nav="magazine">
+            <span class="burn-main-card__visual burn-main-card__visual--diagnosis" aria-hidden="true">
+              <span class="burn-main-card__heart"></span>
+              <span class="burn-main-card__checklist">
+                <i></i><i></i><i></i>
+              </span>
+            </span>
+            <span class="burn-main-card__icon">${getIcon('heart')}</span>
+            <span class="burn-main-card__title">診断</span>
+            <span class="burn-main-card__text">ふたりの相性や気分をチェック</span>
+          </button>
+        </div>
       </div>
     </section>
   `;

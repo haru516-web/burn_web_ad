@@ -577,7 +577,7 @@ function renderCharacterList() {
           </button>
         `).join('')}
       </div>
-      ${renderCharacterDetail('HLTO')}
+      <div class="love-character-modal" data-love-character-modal hidden></div>
     </section>
   `;
 }
@@ -585,6 +585,7 @@ function renderCharacterList() {
 export function renderCharacterDetail(code = 'HLTO') {
   const type = RESULT_TYPES[code] || RESULT_TYPES.HLTO;
   const details = getResultDetails({ resultCode: type.code });
+  const shareCardImageSrc = getShareCardImageSrc(type);
 
   return `
     <article class="love-character-detail" data-love-character-detail>
@@ -608,6 +609,11 @@ export function renderCharacterDetail(code = 'HLTO') {
         <h5>しんどくなりやすい場面</h5>
         <ul>${details.strain.map((copy) => `<li>${copy}</li>`).join('')}</ul>
       </section>
+      ${shareCardImageSrc ? `
+        <button class="button button--primary button--full love-character-share-save" type="button" data-love-character-share-save data-share-card-src="${shareCardImageSrc}" data-share-card-name="${type.typeName}">
+          共有カードを保存
+        </button>
+      ` : ''}
     </article>
   `;
 }
@@ -848,7 +854,10 @@ export function renderLoveMobbyDiagnosis() {
   const diagnosisState = readDiagnosisState();
   return `
     <section class="page page--magazine page--diagnosis">
-      <header class="page-header">
+      <header class="page-header page-header--with-back">
+        <button class="button button--ghost page-back page-back--icon diagnosis-back-button" type="button" data-home-nav="home" aria-label="メインメニューへ戻る">
+          ${getIcon('returnLeft')}
+        </button>
         <div>
           <p class="page-header__mini">diagnosis</p>
           <h2 class="page-header__title">恋愛モビー診断</h2>
