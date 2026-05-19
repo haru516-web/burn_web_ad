@@ -1,3 +1,5 @@
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
+
 export function getIcon(name) {
   const imageIcons = {
     timeline: 'image/icon/feature/timeline.webp',
@@ -15,7 +17,7 @@ export function getIcon(name) {
   };
 
   if (imageIcons[name]) {
-    return `<img class="feature-icon feature-icon--${name}" src="${imageIcons[name]}" alt="" aria-hidden="true" />`;
+    return `<img class="feature-icon feature-icon--${name}" src="${imageIcons[name]}" alt="" aria-hidden="true" ${imageLoadingAttrs()} />`;
   }
 
   const icons = {

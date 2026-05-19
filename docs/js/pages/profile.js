@@ -1,5 +1,6 @@
 import { getIcon } from '../components/icons.js';
 import { getResultImageSrc, readDiagnosisState, RESULT_TYPES } from './loveMobbyDiagnosis.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 function escapeHtml(value = '') {
   return String(value)
@@ -68,7 +69,7 @@ function renderProfileBook(profile = {}, isOpen = false) {
   return `
     <section class="futari-dashboard-profile-book futari-dashboard-card">
       <button class="futari-dashboard-profile-book__button" type="button" data-profile-book-open>
-        <img src="./image/profile_sheets/profile_sheet1.png" alt="" />
+        <img src="./image/profile_sheets/profile_sheet1.png" alt="" ${imageLoadingAttrs()} />
         <strong>${escapeHtml(name)}の記録</strong>
       </button>
     </section>
@@ -86,10 +87,10 @@ function renderMagazineCard(posts = []) {
         </span>
         <span class="futari-dashboard-magazine__preview" aria-hidden="true">
           <span class="futari-dashboard-magazine__paper futari-dashboard-magazine__paper--back">
-            <img src="./image/magazine_cover/page.jpg" alt="" />
+            <img src="./image/magazine_cover/page.jpg" alt="" ${imageLoadingAttrs()} />
           </span>
           <span class="futari-dashboard-magazine__paper futari-dashboard-magazine__paper--front">
-            <img src="./image/magazine_cover/cover_main.png" alt="" />
+            <img src="./image/magazine_cover/cover_main.png" alt="" ${imageLoadingAttrs()} />
           </span>
           <span class="futari-dashboard-magazine__vol">vol.<b>01</b></span>
         </span>
@@ -119,7 +120,7 @@ function renderDiagnosisResultCard() {
 
   return `
     <article class="futari-dashboard-card futari-dashboard-card--diagnosis">
-      <img src="${getResultImageSrc(resultType)}" alt="${escapeHtml(resultType.characterName)}" loading="lazy" decoding="async" />
+      <img src="${getResultImageSrc(resultType)}" alt="${escapeHtml(resultType.characterName)}" ${imageLoadingAttrs()} />
     </article>
   `;
 }

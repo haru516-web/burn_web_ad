@@ -1,52 +1,35 @@
 import { ensureProfileAndMemorySpace } from './completedPages.js';
 import { requireSupabase } from './supabase.js';
+import { getStorageImageUrl } from './imageDelivery.js';
+import { dataUrlToWebpBlob } from './imageProcessing.js';
 
 const PHOTO_BUCKET = 'photo-assets';
 const PHOTO_EXPIRY_RETENTION_DAYS = 1;
 const PHOTO_EXPIRY_TIME_ZONE = 'Asia/Tokyo';
-
-function dataUrlToBlob(dataUrl) {
-  const [meta, content] = String(dataUrl || '').split(',');
-  const mime = meta?.match(/data:([^;]+)/)?.[1] || 'image/webp';
-  const binary = atob(content || '');
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return new Blob([bytes], { type: mime });
-}
-
-function loadImage(dataUrl) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Failed to load photo.'));
-    image.src = dataUrl;
-  });
-}
-
-function canvasToWebpBlob(canvas, quality) {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error('Failed to convert image to WebP.'));
-    }, 'image/webp', quality);
-  });
-}
-
-async function dataUrlToWebpBlob(dataUrl, { maxWidth = 1800, quality = 0.92 } = {}) {
-  const image = await loadImage(dataUrl);
-  const ratio = image.naturalWidth / image.naturalHeight;
-  const width = Math.min(image.naturalWidth, maxWidth);
-  const height = Math.round(width / ratio);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return dataUrlToBlob(dataUrl);
-  ctx.drawImage(image, 0, 0, width, height);
-  return canvasToWebpBlob(canvas, quality);
-}
+const PHOTO_ASSET_LIST_COLUMNS = [
+  'id',
+  'user_id',
+  'author_id',
+  'space_id',
+  'memory_space_id',
+  'display_space_id',
+  'display_scope',
+  'source_type',
+  'storage_path',
+  'thumbnail_path',
+  'captured_at',
+  'created_at',
+  'updated_at',
+  'expires_at',
+  'place',
+  'memo',
+  'price',
+  'time_of_day',
+  'atmosphere',
+  'weather',
+  'mood',
+  'tags',
+].join(', ');
 
 function getTokyoDateParts(date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -73,12 +56,7 @@ function getPhotoExpiryAt(capturedAt) {
 }
 
 async function createPhotoUrl(client, storagePath) {
-  if (!storagePath) return '';
-  const { data, error } = await client.storage
-    .from(PHOTO_BUCKET)
-    .createSignedUrl(storagePath, 60 * 60);
-  if (!error && data?.signedUrl) return data.signedUrl;
-  return '';
+  return getStorageImageUrl(client, PHOTO_BUCKET, storagePath);
 }
 
 function getPhotoAssetStoragePaths(assets = []) {
@@ -185,23 +163,22 @@ export async function savePhotoAsset({ imageData, sourceType = 'album', frame = 
   const assetId = crypto.randomUUID();
   const storagePath = `${storageSpaceId}/${assetId}/original.webp`;
   const thumbnailPath = `${storageSpaceId}/${assetId}/thumbnail.webp`;
-  const blob = await dataUrlToWebpBlob(imageData, { maxWidth: 1800, quality: 0.92 });
-  const thumbnailBlob = await dataUrlToWebpBlob(imageData, { maxWidth: 420, quality: 0.78 });
+  const blob = await dataUrlToWebpBlob(imageData, { maxWidth: 1800, quality: 0.86 });
+  const thumbnailBlob = await dataUrlToWebpBlob(imageData, { maxWidth: 500, quality: 0.74 });
+  const uploadOptions = {
+    contentType: 'image/webp',
+    cacheControl: '31536000',
+    upsert: false,
+  };
 
   const { error: uploadError } = await client.storage
     .from(PHOTO_BUCKET)
-    .upload(storagePath, blob, {
-      contentType: 'image/webp',
-      upsert: false,
-    });
+    .upload(storagePath, blob, uploadOptions);
   if (uploadError) throw uploadError;
 
   const { error: thumbnailUploadError } = await client.storage
     .from(PHOTO_BUCKET)
-    .upload(thumbnailPath, thumbnailBlob, {
-      contentType: 'image/webp',
-      upsert: false,
-    });
+    .upload(thumbnailPath, thumbnailBlob, uploadOptions);
   if (thumbnailUploadError) throw thumbnailUploadError;
 
   const insertPayload = {
@@ -277,10 +254,11 @@ export async function listPhotoAssets({ storageScope = 'shared' } = {}) {
   await deleteExpiredPhotoAssets(client, currentIso);
   let query = client
     .from('photo_assets')
-    .select('*')
+    .select(PHOTO_ASSET_LIST_COLUMNS)
     .is('deleted_at', null)
     .gt('expires_at', currentIso)
-    .order('captured_at', { ascending: false });
+    .order('captured_at', { ascending: false })
+    .range(0, 19);
   if (resolvedScope === 'personal') {
     query = query
       .or(`author_id.eq.${user.id},user_id.eq.${user.id}`)
@@ -294,11 +272,12 @@ export async function listPhotoAssets({ storageScope = 'shared' } = {}) {
   if (error && isMissingDisplayColumnError(error)) {
     ({ data, error } = await client
       .from('photo_assets')
-      .select('*')
+      .select(PHOTO_ASSET_LIST_COLUMNS)
       .or(`space_id.eq.${memorySpaceId},memory_space_id.eq.${memorySpaceId}`)
       .is('deleted_at', null)
       .gt('expires_at', currentIso)
-      .order('captured_at', { ascending: false }));
+      .order('captured_at', { ascending: false })
+      .range(0, 19));
   }
   if (error) throw error;
 

@@ -1,6 +1,7 @@
 import { formatDate, timeAgo } from '../utils/date.js';
 import { getIcon } from './icons.js';
 import { renderAvatarContent } from './avatar.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 function renderTagList(post) {
   const tags = [...(post.fixedTags || []), ...(post.freeTags || [])];
@@ -31,7 +32,7 @@ export function renderPostCard(post, options = {}) {
       ` : ''}
 
       <button class="post-card__image-button" data-open-preview="${post.id}" aria-label="Open post image">
-        <img class="post-card__image" src="${post.imageData}" alt="${post.authorName} post" />
+        <img class="post-card__image" src="${post.imageData}" alt="${post.authorName} post" ${imageLoadingAttrs()} />
       </button>
 
       ${showCaption ? `

@@ -1,6 +1,7 @@
 import { formatDate } from '../utils/date.js';
 import { getIcon } from '../components/icons.js';
 import { renderAvatarContent } from '../components/avatar.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -41,6 +42,7 @@ function renderPostDetailCard(post, options = {}) {
   const isCompletedPage = String(post.id || '').startsWith('completed_') || Boolean(post.composeData?.completedPageId);
   const tags = getDisplayTags(post, isCompletedPage);
   const activeStorageScope = post.storageScope === 'personal' ? 'personal' : 'shared';
+  const detailImage = isCompletedPage ? (post.previewImageData || post.imageData) : post.imageData;
 
   return `
     <article class="post-detail-card" data-post-detail-card ${isActive ? 'data-post-detail-active' : ''}>
@@ -74,7 +76,7 @@ function renderPostDetailCard(post, options = {}) {
         ` : ''}
       </div>
 
-      <img class="post-detail-card__image" src="${post.imageData}" alt="${post.authorName} post image" />
+      <img class="post-detail-card__image" src="${detailImage}" alt="${post.authorName} post image" ${imageLoadingAttrs()} />
 
       ${showActions && !isCompletedPage ? `
         <div class="post-detail-card__action-row">

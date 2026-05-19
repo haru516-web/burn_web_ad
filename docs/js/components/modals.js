@@ -1,5 +1,6 @@
 import { formatDate, formatDateTime } from '../utils/date.js';
 import { getIcon } from './icons.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 export function renderPreviewModal(post, options = {}) {
   if (!post) return '';
@@ -10,7 +11,7 @@ export function renderPreviewModal(post, options = {}) {
     <div class="overlay" data-close-preview>
       <section class="modal modal--preview" role="dialog" aria-modal="true" aria-label="ページプレビュー" onclick="event.stopPropagation()">
         <button class="modal__close" data-close-preview aria-label="Close">${getIcon('close')}</button>
-        <img class="modal__image" src="${post.imageData}" alt="ふたりのページ" />
+        <img class="modal__image" src="${post.previewImageData || post.imageData}" alt="ふたりのページ" ${imageLoadingAttrs()} />
         <div class="modal__body">
           <div class="modal__author-row">
             <div>

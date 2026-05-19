@@ -1,6 +1,7 @@
 import { getIcon } from '../components/icons.js';
 import { getPostDateKey } from '../utils/date.js';
 import { getCalendarEntriesWithSpecialDates, getEntriesForDateWithSpecialDates } from '../utils/specialDates.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 function escapeHtml(value = '') {
   return String(value)
@@ -340,7 +341,7 @@ function renderCalendarDatePopup(state, uiState) {
                 const title = escapeCalendarText(getPostTitle(post));
                 return `
                   <button class="calendar-date-popover__page" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
-                    ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
+                    ${post.imageData ? `<img src="${post.imageData}" alt="${title}" ${imageLoadingAttrs()} />` : '<span>pages</span>'}
                   </button>
                 `;
               }).join('')}
@@ -610,7 +611,7 @@ function renderPageListEntry(post, activePageScope = 'shared') {
   return `
     <article class="couple-album-page" data-album-search-text="${escapeHtml(getAlbumPageSearchText(post))}">
       <button class="couple-album-page__image" type="button" data-open-preview="${post.id}" aria-label="${title}を開く">
-        ${post.imageData ? `<img src="${post.imageData}" alt="${title}" />` : '<span>pages</span>'}
+        ${post.imageData ? `<img src="${post.imageData}" alt="${title}" ${imageLoadingAttrs()} />` : '<span>pages</span>'}
       </button>
       <div class="couple-album-page__meta">
         <p class="couple-kicker">${dateText}</p>
@@ -647,7 +648,7 @@ function renderPhotoListEntry(memory) {
   return `
     <article class="couple-album-page couple-album-page--photo" data-album-search-text="${escapeHtml(getAlbumPhotoSearchText(memory))}">
       <button class="couple-album-page__image" type="button" data-open-photo-preview="${photoId}" aria-label="写真を開く">
-        ${memory.imageData ? `<img src="${memory.imageData}" alt="" />` : '<span>photo</span>'}
+        ${memory.imageData ? `<img src="${memory.imageData}" alt="" ${imageLoadingAttrs()} />` : '<span>photo</span>'}
       </button>
       <div class="couple-album-page__meta">
         <p class="couple-kicker">${dateText}</p>
@@ -793,7 +794,7 @@ function renderDraftListEntry(draft) {
   return `
     <article class="couple-page-list-card couple-card">
       <button class="couple-page-list-card__media" type="button" data-open-draft="${draft.id}" aria-label="${title}を開く">
-        ${draft.imageData ? `<img src="${draft.imageData}" alt="${title}" />` : '<span>draft</span>'}
+        ${draft.imageData ? `<img src="${draft.imageData}" alt="${title}" ${imageLoadingAttrs()} />` : '<span>draft</span>'}
       </button>
       <div>
         <p class="couple-kicker">${dateText}</p>
@@ -1010,7 +1011,7 @@ function renderProfileBook(state) {
     <section class="couple-date-list-page">
       <form class="couple-profile-sheet-form" data-profile-book-form>
         <div class="couple-profile-sheet">
-          <img src="./image/profile_sheets/profile_sheet1.png" alt="" />
+          <img src="./image/profile_sheets/profile_sheet1.png" alt="" ${imageLoadingAttrs()} />
           ${fields.map(renderField).join('')}
         </div>
         <div class="couple-profile-sheet-actions">
@@ -1106,7 +1107,7 @@ function renderPlan(plan, calendarEntries = []) {
   const added = calendarEntries.some((entry) => entry.planId === plan.id);
   return `
     <article class="couple-plan-card couple-card">
-      <img src="${plan.image}" alt="${plan.title}" />
+      <img src="${plan.image}" alt="${plan.title}" ${imageLoadingAttrs()} />
       <div>
         <h3>${plan.title}</h3>
         <p>${plan.copy}</p>

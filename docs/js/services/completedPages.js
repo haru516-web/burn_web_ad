@@ -1,8 +1,45 @@
 import { requireSupabase } from './supabase.js';
+import { getStorageImageUrl } from './imageDelivery.js';
+import { dataUrlToWebpBlob } from './imageProcessing.js';
 
 const COMPLETED_PAGES_BUCKET = 'completed-pages';
 const ACTIVE_SPACE_KEY = 'burn-active-memory-space-v1';
 const PERSONAL_SPACE_KEY = 'burn-personal-memory-space-v1';
+const COMPLETED_PAGE_LIST_COLUMNS = [
+  'id',
+  'page_id',
+  'space_id',
+  'display_space_id',
+  'author_id',
+  'display_scope',
+  'save_scope',
+  'title',
+  'thumbnail_image_path',
+  'preview_image_path',
+  'final_image_path',
+  'final_base_image_path',
+  'final_preview_image_path',
+  'completed_at',
+  'created_at',
+  'updated_at',
+].join(', ');
+const COMPLETED_PAGE_LEGACY_LIST_COLUMNS = [
+  'id',
+  'page_id',
+  'space_id',
+  'display_space_id',
+  'author_id',
+  'display_scope',
+  'save_scope',
+  'title',
+  'final_image_path',
+  'final_base_image_path',
+  'final_preview_image_path',
+  'completed_at',
+  'created_at',
+  'updated_at',
+].join(', ');
+const COMPLETED_PAGE_DETAIL_COLUMNS = `${COMPLETED_PAGE_LIST_COLUMNS}, editor_snapshot_json, text_layers_json`;
 
 function getActiveSpaceStorageKey(userId) {
   return `${ACTIVE_SPACE_KEY}:${userId}`;
@@ -52,29 +89,15 @@ function getUserEmail(user) {
   return user?.email || user?.user_metadata?.email || '';
 }
 
-function dataUrlToBlob(dataUrl) {
-  const [meta, content] = String(dataUrl || '').split(',');
-  const mime = meta?.match(/data:([^;]+)/)?.[1] || 'image/webp';
-  const binary = atob(content || '');
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return new Blob([bytes], { type: mime });
-}
-
 async function createCompletedPageUrl(client, storagePath) {
-  if (!storagePath) return '';
-  const { data, error } = await client.storage
-    .from(COMPLETED_PAGES_BUCKET)
-    .createSignedUrl(storagePath, 60 * 60);
-  if (!error && data?.signedUrl) return data.signedUrl;
-  return '';
+  return getStorageImageUrl(client, COMPLETED_PAGES_BUCKET, storagePath);
 }
 
 function getCompletedPageStoragePaths(page = {}) {
   return Array.from(new Set([
     page.final_image_path,
+    page.preview_image_path,
+    page.thumbnail_image_path,
     page.final_base_image_path,
     page.final_preview_image_path,
     page.editor_snapshot_json?.finalImagePath,
@@ -234,17 +257,34 @@ export async function saveCompletedPage({
     : null;
   const completedPageId = crypto.randomUUID();
   const finalImagePath = `${storageSpaceId}/${completedPageId}/final.webp`;
-  const finalImageBlob = dataUrlToBlob(finalImageData || editorSnapshot?.imageData || '');
+  const previewImagePath = `${storageSpaceId}/${completedPageId}/preview.webp`;
+  const thumbnailImagePath = `${storageSpaceId}/${completedPageId}/thumbnail.webp`;
+  const imageSource = finalImageData || editorSnapshot?.imageData || '';
+  const finalImageBlob = await dataUrlToWebpBlob(imageSource, { maxWidth: 1800, quality: 0.88 });
+  const previewImageBlob = await dataUrlToWebpBlob(imageSource, { maxWidth: 1600, quality: 0.82 });
+  const thumbnailImageBlob = await dataUrlToWebpBlob(imageSource, { maxWidth: 500, quality: 0.74 });
   if (!finalImageBlob.size) throw new Error('完成ページ画像がありません。');
   const now = new Date().toISOString();
+  const uploadOptions = {
+    contentType: 'image/webp',
+    cacheControl: '31536000',
+    upsert: false,
+  };
 
   const { error: uploadError } = await client.storage
     .from(COMPLETED_PAGES_BUCKET)
-    .upload(finalImagePath, finalImageBlob, {
-      contentType: 'image/webp',
-      upsert: false,
-    });
+    .upload(finalImagePath, finalImageBlob, uploadOptions);
   if (uploadError) throw uploadError;
+
+  const { error: previewUploadError } = await client.storage
+    .from(COMPLETED_PAGES_BUCKET)
+    .upload(previewImagePath, previewImageBlob, uploadOptions);
+  if (previewUploadError) throw previewUploadError;
+
+  const { error: thumbnailUploadError } = await client.storage
+    .from(COMPLETED_PAGES_BUCKET)
+    .upload(thumbnailImagePath, thumbnailImageBlob, uploadOptions);
+  if (thumbnailUploadError) throw thumbnailUploadError;
 
   const { data, error } = await client
     .from('completed_pages')
@@ -255,6 +295,8 @@ export async function saveCompletedPage({
       display_space_id: displaySpaceId,
       author_id: user.id,
       title: title || 'Untitled',
+      thumbnail_image_path: thumbnailImagePath,
+      preview_image_path: previewImagePath,
       final_image_path: finalImagePath,
       save_scope: displaySaveScope,
       display_scope: displaySaveScope,
@@ -262,6 +304,8 @@ export async function saveCompletedPage({
       editor_snapshot_json: {
         ...(editorSnapshot || {}),
         imageData: '',
+        thumbnailImagePath,
+        previewImagePath,
         finalImagePath,
         isLocked: true,
         storageScope: displayScope,
@@ -270,7 +314,7 @@ export async function saveCompletedPage({
       },
       updated_at: now,
     })
-    .select('*')
+    .select(COMPLETED_PAGE_DETAIL_COLUMNS)
     .single();
 
   if (error) throw error;
@@ -286,8 +330,9 @@ export async function listCompletedPages({ storageScope = 'shared' } = {}) {
   const { user, memorySpaceId } = await ensureProfileAndMemorySpace({ scope: resolvedScope });
   let query = client
     .from('completed_pages')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select(COMPLETED_PAGE_LIST_COLUMNS)
+    .order('created_at', { ascending: false })
+    .range(0, 19);
   if (resolvedScope === 'personal') {
     query = query
       .eq('author_id', user.id)
@@ -297,13 +342,31 @@ export async function listCompletedPages({ storageScope = 'shared' } = {}) {
       .eq('display_space_id', memorySpaceId)
       .eq('display_scope', 'couple');
   }
-  const { data, error } = await query;
+  let { data, error } = await query;
+  if (error?.code === '42703') {
+    query = client
+      .from('completed_pages')
+      .select(COMPLETED_PAGE_LEGACY_LIST_COLUMNS)
+      .order('created_at', { ascending: false })
+      .range(0, 19);
+    if (resolvedScope === 'personal') {
+      query = query
+        .eq('author_id', user.id)
+        .eq('display_scope', 'personal');
+    } else {
+      query = query
+        .eq('display_space_id', memorySpaceId)
+        .eq('display_scope', 'couple');
+    }
+    ({ data, error } = await query);
+  }
 
   if (error) throw error;
   return Promise.all((data || []).map(async (page) => ({
     ...page,
     storageScope: resolvedScope,
-    finalImageUrl: await createCompletedPageUrl(client, page.final_image_path || page.final_base_image_path || page.final_preview_image_path),
+    thumbnailImageUrl: await createCompletedPageUrl(client, page.thumbnail_image_path || page.final_preview_image_path || page.final_image_path || page.final_base_image_path),
+    previewImageUrl: await createCompletedPageUrl(client, page.preview_image_path || page.final_preview_image_path || page.final_image_path || page.final_base_image_path),
   })));
 }
 
@@ -320,7 +383,7 @@ export async function moveCompletedPageStorageScope(pageId, nextStorageScope = '
     : null;
   const { data: page, error: readError } = await client
     .from('completed_pages')
-    .select('*')
+    .select(COMPLETED_PAGE_DETAIL_COLUMNS)
     .eq('id', normalizedPageId)
     .eq('author_id', user.id)
     .single();
@@ -347,14 +410,15 @@ export async function moveCompletedPageStorageScope(pageId, nextStorageScope = '
     })
     .eq('id', normalizedPageId)
     .eq('author_id', user.id)
-    .select('*')
+    .select(COMPLETED_PAGE_DETAIL_COLUMNS)
     .single();
   if (error) throw error;
 
   return {
     ...data,
     storageScope: targetScope,
-    finalImageUrl: await createCompletedPageUrl(client, data.final_image_path || data.final_base_image_path || data.final_preview_image_path),
+    thumbnailImageUrl: await createCompletedPageUrl(client, data.thumbnail_image_path || data.final_preview_image_path || data.final_image_path || data.final_base_image_path),
+    previewImageUrl: await createCompletedPageUrl(client, data.preview_image_path || data.final_preview_image_path || data.final_image_path || data.final_base_image_path),
   };
 }
 
@@ -366,7 +430,7 @@ export async function deleteCompletedPage(pageId) {
   const { user } = await ensureProfileAndMemorySpace({ scope: 'personal' });
   const { data: page, error: readError } = await client
     .from('completed_pages')
-    .select('*')
+    .select(COMPLETED_PAGE_DETAIL_COLUMNS)
     .eq('id', normalizedPageId)
     .eq('author_id', user.id)
     .maybeSingle();
@@ -398,7 +462,9 @@ export function completedPageToLocalPost(page, authorName = 'you') {
     authorName: resolvedAuthorName,
     authorIcon: (resolvedAuthorName || 'U').trim().slice(0, 1).toUpperCase(),
     caption: page.title || snapshot.headline || 'Untitled',
-    imageData: page.finalImageUrl || snapshot.imageData || '',
+    imageData: page.thumbnailImageUrl || page.previewImageUrl || snapshot.imageData || '',
+    previewImageData: page.previewImageUrl || page.thumbnailImageUrl || snapshot.imageData || '',
+    finalImageData: page.finalImageUrl || '',
     fixedTags: Array.isArray(snapshot.fixedTags) ? snapshot.fixedTags : ['completed'],
     freeTags: Array.isArray(snapshot.freeTags) ? snapshot.freeTags : [],
     likes: 0,
@@ -416,6 +482,8 @@ export function completedPageToLocalPost(page, authorName = 'you') {
       ...snapshotComposeData,
       source: snapshot.source || snapshotComposeData.source || 'completed_page',
       completedPageId: page.id,
+      thumbnailImagePath: page.thumbnail_image_path || snapshot.thumbnailImagePath || '',
+      previewImagePath: page.preview_image_path || snapshot.previewImagePath || '',
       finalImagePath: page.final_image_path || snapshot.finalImagePath || '',
       isLocked: true,
     },

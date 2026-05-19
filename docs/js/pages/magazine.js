@@ -1,6 +1,7 @@
 import { getIcon } from '../components/icons.js';
 import { formatDate } from '../utils/date.js';
 import { renderLoveMobbyDiagnosis } from './loveMobbyDiagnosis.js';
+import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
 const COUPLE_MAGAZINE_STORAGE_KEY = 'couple-magazine-mvp-v1';
 
@@ -26,7 +27,7 @@ function renderSelectablePosts(posts) {
   return posts.map((post) => `
     <label class="issue-post-option">
       <input type="checkbox" name="issuePostIds" value="${post.id}" />
-      <img src="${post.imageData}" alt="${post.authorName}の投稿画像" />
+      <img src="${post.imageData}" alt="${post.authorName}の投稿画像" ${imageLoadingAttrs()} />
       <div class="issue-post-option__meta">
         <strong>${post.authorName}</strong>
         <span>${formatDate(post.createdAt)}</span>
@@ -49,7 +50,7 @@ function renderIssues(issues, posts) {
         <p class="issue-card__subtitle">${issue.subtitle || 'sub title free'}</p>
         <div class="issue-card__count">${selectedPosts.length} posts selected</div>
         <div class="issue-card__thumbs">
-          ${selectedPosts.slice(0, 3).map((post) => `<img src="${post.imageData}" alt="${post.authorName}の投稿画像" />`).join('')}
+          ${selectedPosts.slice(0, 3).map((post) => `<img src="${post.imageData}" alt="${post.authorName}の投稿画像" ${imageLoadingAttrs()} />`).join('')}
         </div>
       </article>
     `;
@@ -86,7 +87,7 @@ function renderCoupleMagazine(state) {
             ${memories.length ? memories.map((memory) => `
               <label class="couple-photo-option">
                 <input type="checkbox" data-couple-memory value="${memory.id}" ${selectedMemoryIds.includes(memory.id) ? 'checked' : ''} />
-                <img src="${memory.imageData}" alt="デート写真 ${formatDate(memory.createdAt)}" />
+                <img src="${memory.imageData}" alt="デート写真 ${formatDate(memory.createdAt)}" ${imageLoadingAttrs()} />
                 <span>${memory.place || formatDate(memory.createdAt)}</span>
               </label>
             `).join('') : '<p class="empty-copy">先にrecordで写真を保存すると、ここで選べます。</p>'}
@@ -99,7 +100,7 @@ function renderCoupleMagazine(state) {
           ${hasGeneratedCover ? '<p class="couple-badge">表紙ができました</p>' : ''}
           ${hasGeneratedCover ? `
             <article class="couple-cover-preview">
-              <img src="${selectedMemories[0].imageData}" alt="雑誌表紙プレビュー" />
+              <img src="${selectedMemories[0].imageData}" alt="雑誌表紙プレビュー" ${imageLoadingAttrs()} />
               <div>
                 <p class="couple-cover-preview__eyebrow">couple issue</p>
                 <h4>${mvpState.coverTitle || 'Our Date Issue'}</h4>

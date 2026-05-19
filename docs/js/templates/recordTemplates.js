@@ -36,6 +36,30 @@ const backgroundMobbyPink = new URL('../../references/record_background/back_ex_
 const backgroundMobbyPurple = new URL('../../references/record_background/back_ex_mobbypurple.webp', import.meta.url).href;
 const backgroundMobbyYellow = new URL('../../references/record_background/back_ex_mobbyyellow.webp', import.meta.url).href;
 const backgroundYankiMobby = new URL('../../references/record_background/back_ex_yankimobby.webp', import.meta.url).href;
+const recordBackBackgrounds = [
+  { id: 'record-background-back-bubble-1', label: 'Bubble 1', src: new URL('../../references/record_background/back/back_bubble_1.webp', import.meta.url).href },
+  { id: 'record-background-back-bubble-2', label: 'Bubble 2', src: new URL('../../references/record_background/back/back_bubble_2.webp', import.meta.url).href },
+  { id: 'record-background-back-bubble-3', label: 'Bubble 3', src: new URL('../../references/record_background/back/back_bubble_3.webp', import.meta.url).href },
+  { id: 'record-background-back-bubble-4', label: 'Bubble 4', src: new URL('../../references/record_background/back/back_bubble_4.webp', import.meta.url).href },
+  { id: 'record-background-back-bubble-5', label: 'Bubble 5', src: new URL('../../references/record_background/back/back_bubble_5.webp', import.meta.url).href },
+  { id: 'record-background-back-deconstructivism-1', label: 'Deconstructivism 1', src: new URL('../../references/record_background/back/back_deconstructivism_1.webp', import.meta.url).href },
+  { id: 'record-background-back-deconstructivism-2', label: 'Deconstructivism 2', src: new URL('../../references/record_background/back/back_deconstructivism_2.webp', import.meta.url).href },
+  { id: 'record-background-back-mini-1', label: 'Mini 1', src: new URL('../../references/record_background/back/back_mini_1.webp', import.meta.url).href },
+  { id: 'record-background-back-mini-2', label: 'Mini 2', src: new URL('../../references/record_background/back/back_mini_2.webp', import.meta.url).href },
+  { id: 'record-background-back-mini-3', label: 'Mini 3', src: new URL('../../references/record_background/back/back_mini_3.webp', import.meta.url).href },
+  { id: 'record-background-back-mini-4', label: 'Mini 4', src: new URL('../../references/record_background/back/back_mini_4.webp', import.meta.url).href },
+  { id: 'record-background-back-mini-5', label: 'Mini 5', src: new URL('../../references/record_background/back/back_mini_5.webp', import.meta.url).href },
+  { id: 'record-background-back-mini-6', label: 'Mini 6', src: new URL('../../references/record_background/back/back_mini_6.webp', import.meta.url).href },
+  { id: 'record-background-back-newwave-1', label: 'New Wave 1', src: new URL('../../references/record_background/back/back_newwave_1.webp', import.meta.url).href },
+  { id: 'record-background-back-newwave-2', label: 'New Wave 2', src: new URL('../../references/record_background/back/back_newwave_2.webp', import.meta.url).href },
+  { id: 'record-background-back-newwave-3', label: 'New Wave 3', src: new URL('../../references/record_background/back/back_newwave_3.webp', import.meta.url).href },
+  { id: 'record-background-back-newwave-4', label: 'New Wave 4', src: new URL('../../references/record_background/back/back_newwave_4.webp', import.meta.url).href },
+  { id: 'record-background-back-sui-1', label: 'Sui 1', src: new URL('../../references/record_background/back/back_sui_1.webp', import.meta.url).href },
+  { id: 'record-background-back-sui-2', label: 'Sui 2', src: new URL('../../references/record_background/back/back_sui_2.webp', import.meta.url).href },
+  { id: 'record-background-back-sui-3', label: 'Sui 3', src: new URL('../../references/record_background/back/back_sui_3.webp', import.meta.url).href },
+  { id: 'record-background-back-sui-4', label: 'Sui 4', src: new URL('../../references/record_background/back/back_sui_4.webp', import.meta.url).href },
+  { id: 'record-background-back-sui-5', label: 'Sui 5', src: new URL('../../references/record_background/back/back_sui_5.webp', import.meta.url).href },
+];
 
 const rect = (x, y, width, height) => ({ x, y, width, height });
 
@@ -114,6 +138,7 @@ export const RECORD_BACKGROUNDS = [
   { id: 'record-background-mobbypurple', label: 'Mobby Purple', src: backgroundMobbyPurple },
   { id: 'record-background-mobbyyellow', label: 'Mobby Yellow', src: backgroundMobbyYellow },
   { id: 'record-background-yankimobby', label: 'Yanki Mobby', src: backgroundYankiMobby },
+  ...recordBackBackgrounds,
 ];
 
 export const DEFAULT_RECORD_BACKGROUND = RECORD_BACKGROUNDS[0].id;
