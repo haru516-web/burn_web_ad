@@ -1,6 +1,7 @@
 import { getIcon } from '../components/icons.js';
 import compatibilitySource from '../../../love_mobby_compatibility_136.md?raw';
 import compatibilityScoreSource from '../../../love_mobby_compatibility_100_scores.md?raw';
+import typeAffirmationSource from '../../../love_mobby_type_affirmation_texts.md?raw';
 
 export const LOVE_MOBBY_STORAGE_KEY = 'love_mobby_diag_v1';
 export const PAGE_SIZE = 5;
@@ -258,6 +259,44 @@ function getCompatibilityResult(firstCode, secondCode) {
   };
 }
 
+function parseTypeAffirmationSource(source) {
+  const entries = {};
+  let currentCode = '';
+  let currentLines = [];
+
+  const flush = () => {
+    if (!currentCode) return;
+    const text = currentLines
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join('\n\n');
+    if (text) entries[currentCode] = text;
+    currentLines = [];
+  };
+
+  source.split(/\r?\n/).forEach((line) => {
+    const sectionMatch = line.match(/^##\s+([A-Z]{4})/);
+    if (sectionMatch) {
+      flush();
+      currentCode = sectionMatch[1];
+      return;
+    }
+
+    if (/^---\s*$/.test(line)) {
+      flush();
+      currentCode = '';
+      return;
+    }
+
+    if (currentCode) currentLines.push(line);
+  });
+
+  flush();
+  return entries;
+}
+
+const TYPE_AFFIRMATION_TABLE = parseTypeAffirmationSource(typeAffirmationSource);
+
 const typeDetails = {
   heroine: {
     tendency: '恋の中で「ちゃんと大切にされている実感」を受け取るほど、自分らしく輝けます。',
@@ -509,7 +548,18 @@ function getResultDetails(result) {
       code[2] === 'T' ? '映画風テンプレ、旅行・イベント系ページ、特別感ある表紙。' : '日常記録テンプレ、家デートや何気ない会話のページ、落ち着いた雑誌デザイン。',
       code[1] === 'L' ? '一緒に作るプロフィール帳、カップルで回答するページ。' : '自分のペースで作れるページ、後から相手がリアクションできる記録。',
     ],
+    affirmation: TYPE_AFFIRMATION_TABLE[code] || '',
   };
+}
+
+function renderTypeAffirmationSection(text = '', heading = '分かってほしいこと') {
+  if (!text) return '';
+  return `
+    <section class="love-type-affirmation">
+      <h4>${heading}</h4>
+      ${text.split(/\n{2,}/).map((copy) => `<p>${copy}</p>`).join('')}
+    </section>
+  `;
 }
 
 export function getResultImageSrc(resultType) {
@@ -609,6 +659,7 @@ export function renderCharacterDetail(code = 'HLTO') {
         <h5>しんどくなりやすい場面</h5>
         <ul>${details.strain.map((copy) => `<li>${copy}</li>`).join('')}</ul>
       </section>
+      ${renderTypeAffirmationSection(details.affirmation)}
       ${shareCardImageSrc ? `
         <button class="button button--primary button--full love-character-share-save" type="button" data-love-character-share-save data-share-card-src="${shareCardImageSrc}" data-share-card-name="${type.typeName}">
           共有カードを保存
@@ -840,6 +891,7 @@ function renderResult(diagnosisState) {
         <section><h4>しんどくなりやすい場面</h4><ul>${details.strain.map((copy) => `<li>${copy}</li>`).join('')}</ul></section>
         <section><h4>相性がいい相手</h4><p>${details.match}</p></section>
         <section><h4>BURNでおすすめの残し方</h4><ul>${details.burn.map((copy) => `<li>${copy}</li>`).join('')}</ul></section>
+        ${renderTypeAffirmationSection(details.affirmation)}
       </div>
       <div class="love-diagnosis__nav">
         <button class="button button--ghost" type="button" data-love-open-compatibility>&#30456;&#24615;&#12434;&#35211;&#12427;</button>
