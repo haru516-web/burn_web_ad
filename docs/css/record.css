@@ -1448,6 +1448,40 @@
   padding-bottom: 24px;
 }
 
+@media (min-width: 621px) {
+  .record-select-list {
+    display: flex;
+    gap: 14px;
+    margin-inline: -16px;
+    padding: 4px 16px 18px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 16px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(180, 106, 98, 0.44) rgba(78, 57, 51, 0.08);
+  }
+
+  .record-select-list::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .record-select-list::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(78, 57, 51, 0.08);
+  }
+
+  .record-select-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(180, 106, 98, 0.44);
+  }
+
+  .record-select-list .record-select-card {
+    flex: 0 0 168px;
+    scroll-snap-align: start;
+  }
+}
+
 .record-select-card {
   position: relative;
   min-width: 0;
@@ -1802,6 +1836,33 @@
 
 .record-background-grid::-webkit-scrollbar {
   display: none;
+}
+
+@media (min-width: 621px) {
+  .record-template-grid,
+  .record-background-grid {
+    overflow-x: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(180, 106, 98, 0.44) rgba(78, 57, 51, 0.08);
+  }
+
+  .record-template-grid::-webkit-scrollbar,
+  .record-background-grid::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+  }
+
+  .record-template-grid::-webkit-scrollbar-track,
+  .record-background-grid::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(78, 57, 51, 0.08);
+  }
+
+  .record-template-grid::-webkit-scrollbar-thumb,
+  .record-background-grid::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(180, 106, 98, 0.44);
+  }
 }
 
 .record-template-option,
