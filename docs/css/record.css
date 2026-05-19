@@ -458,6 +458,7 @@
 .record-select-card p,
 .record-generated-page span {
   margin: 6px 0 0;
+  white-space: pre-line;
   color: #5c504b;
   line-height: 1.7;
 }
@@ -1245,8 +1246,15 @@
   line-height: 20px;
 }
 
+.record-field__limit {
+  color: rgba(74, 60, 55, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
 .record-field input,
 .record-field select,
+.record-field textarea,
 .record-input-wrap {
   width: 100%;
   min-height: 54px;
@@ -1256,10 +1264,18 @@
 }
 
 .record-field input,
-.record-field select {
+.record-field select,
+.record-field textarea {
   padding: 0 16px;
   color: #2d2421;
   font: inherit;
+}
+
+.record-field textarea {
+  min-height: 108px;
+  padding-block: 12px;
+  line-height: 1.65;
+  resize: vertical;
 }
 
 .record-tag-fields {
@@ -2276,6 +2292,7 @@
 .record-template-slot--text p {
   margin: 0;
   overflow: hidden;
+  white-space: pre-line;
   color: #4f4440;
   font-family: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
   font-size: clamp(0.54rem, 3.03cqw, 0.74rem);

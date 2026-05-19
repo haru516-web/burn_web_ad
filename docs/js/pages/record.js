@@ -9,6 +9,13 @@ import {
 } from '../templates/recordTemplates.js';
 import { imageLoadingAttrs } from '../services/imageDelivery.js';
 
+export const RECORD_TEXT_LIMITS = {
+  placeMaxChars: 12,
+  memoMaxChars: 56,
+  memoMaxLines: 4,
+  memoMaxCharsPerLine: 18,
+};
+
 function escapeHtml(value = '') {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -388,11 +395,12 @@ function renderRecordEdit(memory) {
         <div class="record-edit-card__time">${getIcon('clock')} <strong>${escapeHtml(memory.time)}</strong></div>
         <label class="record-field">
           <span>場所 <em>必須</em></span>
-          <div class="record-input-wrap">${getIcon('pin')}<input type="text" data-record-edit-place value="${escapeHtml(memory.place || '')}" placeholder="代官山" required /></div>
+          <div class="record-input-wrap">${getIcon('pin')}<input type="text" data-record-edit-place value="${escapeHtml(memory.place || '')}" placeholder="代官山" maxlength="${RECORD_TEXT_LIMITS.placeMaxChars}" required /></div>
         </label>
         <label class="record-field">
           <span>感想 <em>必須</em></span>
-          <input type="text" data-record-edit-memo value="${escapeHtml(memory.memo || '')}" placeholder="例: カフェの雰囲気が素敵だった" required />
+          <textarea data-record-edit-memo placeholder="例: カフェの雰囲気が素敵だった" maxlength="${RECORD_TEXT_LIMITS.memoMaxChars}" required>${escapeHtml(memory.memo || '')}</textarea>
+          <small class="record-field__limit">最大${RECORD_TEXT_LIMITS.memoMaxLines}行 / ${RECORD_TEXT_LIMITS.memoMaxChars}文字まで</small>
         </label>
         ${renderRecordChoiceFields(memory, { edit: true })}
         <div class="record-tag-fields record-tag-fields--extra" aria-label="追加タグ">

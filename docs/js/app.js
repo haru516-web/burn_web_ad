@@ -19,7 +19,7 @@ import {
 } from './pages/loveMobbyDiagnosis.js';
 import { renderProfile } from './pages/profile.js';
 import { renderPostDetail } from './pages/postDetail.js';
-import { renderRecord } from './pages/record.js';
+import { RECORD_TEXT_LIMITS, renderRecord } from './pages/record.js';
 import { DEFAULT_COMPOSE_TEMPLATE, getComposeTemplateById } from './templates/index.js';
 import {
   DEFAULT_RECORD_BACKGROUND,
@@ -8940,6 +8940,55 @@ async function applyRecordSelectUploadFile(file) {
   return true;
 }
 
+function limitRecordTextLine(line, maxChars) {
+  return Array.from(String(line || '')).slice(0, maxChars).join('');
+}
+
+function normalizeRecordMemoText(value) {
+  const normalized = String(value || '').replace(/\r\n?/g, '\n');
+  const lines = normalized
+    .split('\n')
+    .slice(0, RECORD_TEXT_LIMITS.memoMaxLines)
+    .map((line) => limitRecordTextLine(line, RECORD_TEXT_LIMITS.memoMaxCharsPerLine));
+  const limitedLines = [];
+  let usedChars = 0;
+
+  for (const line of lines) {
+    const remaining = RECORD_TEXT_LIMITS.memoMaxChars - usedChars;
+    if (remaining <= 0) break;
+    const nextLine = limitRecordTextLine(line, remaining);
+    limitedLines.push(nextLine);
+    usedChars += Array.from(nextLine).length;
+  }
+
+  return limitedLines.join('\n');
+}
+
+function normalizeRecordPlaceText(value) {
+  return limitRecordTextLine(String(value || '').replace(/\s+/g, ' ').trimStart(), RECORD_TEXT_LIMITS.placeMaxChars);
+}
+
+function bindRecordTextLimits() {
+  const placeInput = document.querySelector('[data-record-edit-place]');
+  if (placeInput) {
+    placeInput.addEventListener('input', () => {
+      const nextValue = normalizeRecordPlaceText(placeInput.value);
+      if (placeInput.value !== nextValue) placeInput.value = nextValue;
+    });
+  }
+
+  const memoInput = document.querySelector('[data-record-edit-memo]');
+  if (memoInput) {
+    memoInput.addEventListener('input', () => {
+      const nextValue = normalizeRecordMemoText(memoInput.value);
+      if (memoInput.value !== nextValue) {
+        memoInput.value = nextValue;
+        memoInput.setSelectionRange?.(nextValue.length, nextValue.length);
+      }
+    });
+  }
+}
+
 function recordSlotToCanvasRect(slot, width, height) {
   return {
     x: (slot.x / 100) * width,
@@ -9644,6 +9693,7 @@ async function postRecordGeneratedPageWithOverlay() {
 
 function bindRecordEvents() {
   bindPostInteractions(document.getElementById('screenArea'));
+  bindRecordTextLimits();
 
   if (uiState.recordStage === 'camera' && !uiState.recordDraft?.imageData) {
     startRecordCameraStream();
@@ -9874,8 +9924,8 @@ function bindRecordEvents() {
     if (!id) return;
     const currentMemory = getState().recordMemories.find((memory) => memory.id === id) || {};
     const updates = {
-      place: String(document.querySelector('[data-record-edit-place]')?.value || '').trim(),
-      memo: String(document.querySelector('[data-record-edit-memo]')?.value || '').trim(),
+      place: normalizeRecordPlaceText(document.querySelector('[data-record-edit-place]')?.value || '').trim(),
+      memo: normalizeRecordMemoText(document.querySelector('[data-record-edit-memo]')?.value || '').trim(),
       price: document.querySelector('[data-record-edit-price]')?.value || currentMemory.price || '',
       timeOfDay: document.querySelector('[data-record-edit-time-of-day]')?.value || currentMemory.timeOfDay || currentMemory.time_of_day || '',
       atmosphere: document.querySelector('[data-record-edit-atmosphere]')?.value || currentMemory.atmosphere || '',
